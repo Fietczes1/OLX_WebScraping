@@ -1,6 +1,6 @@
 import sqlite3
 
-from Db_Injector import data_injection, data_injection_by_url
+from Db_Injector import data_injection, data_injection_by_url, Add_Date_to_referenced_table, filter_new
 
 conn = sqlite3.connect('your_database.db')  # Creates a connection object
 cursor = conn.cursor()  # Creates a cursor object
@@ -20,3 +20,13 @@ def test_data_injection():
      '/d/oferta/funkcjonalne-3-pokojowe-mieszkanie-w-super-lokalizacji-olsza-CID3-IDUUCJT.html', 1]
     assert data_injection_by_url(valid_data_1, "your_database.db") == True
 
+def test_Add_Date_to_referenced_table():
+
+    #assert cursor.execute('INSERT INTO Date_Observed (AdsDate, Ads_id) VALUES (?, ?)', ("2023-06-21", "828229765"))
+
+    assert Add_Date_to_referenced_table(conn,  "828229765") == True
+
+def test_filter_new():
+
+
+    assert filter_new(conn, 10000) == True

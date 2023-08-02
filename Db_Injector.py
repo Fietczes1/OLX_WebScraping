@@ -2,6 +2,7 @@
 import sqlite3
 from datetime import date
 
+Table_name = "OLX_scrapping_table"
 def connect_to_database(database_path: str):
     try:
         conn = sqlite3.connect(database_path)
@@ -17,18 +18,21 @@ def DB_consistance_checker():
 def data_injection(data: list, connection_object = None):
     #TODO data_validation
     cursor = connection_object.cursor()
-    table_name = get_today_table_name()
+    table_name = Table_name #get_today_table_name()
 
+
+    #In belove example UC_Columns12 is constraint name
     cursor.execute(f'''
             CREATE TABLE IF NOT EXISTS {table_name} (
-                Ads_id TEXT,
+                Ads_id TEXT PRIMARY KEY,
                 Title TEXT,
                 Price INTEGER,
                 Location TEXT,
                 Area INTEGER,
                 Price_per_meter2 INTEGER,
                 URL TEXT,
-                Validity INTEGER
+                Validity INTEGER,
+                CONSTRAINT Duplicate_restrainer UNIQUE (Ads_id, Title, URL)
             )
         ''')
 
@@ -37,6 +41,7 @@ def data_injection(data: list, connection_object = None):
 
     # All data checks passed, data is valid
     #data = [operation_date, operation_name, account_number, bank_category, amount, classified_marker]
+    #TODO using below function become unnecessary as Db care about it by themself by contrains
     if duplication_checker(data, cursor, table_name):
         # Prepare the SQL INSERT statement
         query = f"INSERT INTO {table_name} (Ads_id ,Title, Price, Location, Area, Price_per_meter2, URL, Validity ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
@@ -45,9 +50,11 @@ def data_injection(data: list, connection_object = None):
 
             # Execute the INSERT statement for each data row
             cursor.execute(query, data)
-
+            Add_Date_to_referenced_table(connection_object, data[0])
             # Commit the changes to the database
             connection_object.commit()
+
+            #TODO adding to Db we need to make function for filtration what is down and named filter_and_send
 
             # # Close the database connection
             # connection_object.close()
@@ -88,7 +95,12 @@ def get_today_table_name():
     return table_name
 
 def duplication_checker(data: list, cursor: sqlite3.Cursor, Table: str):
+    return 1
+
+    #TODO we could do that by DbConstraint
     # Extract the unique identifier from the data
+    #remove
+
     unique_id = data[0]
 
     # Check if a record with the same unique identifier already exists
@@ -97,20 +109,67 @@ def duplication_checker(data: list, cursor: sqlite3.Cursor, Table: str):
 
     if existing_record:
         print("Duplicated element")
-        Add_Date_to_referenced_table()
+        #Add_Date_to_referenced_table()
         return 0
 
     else:
         print("New element Added")
+        #TODO send SMS message
         # Insert the new record into the database
         return 1
 
-def Add_Date_to_referenced_table(conector: sqlite3.Cursor, table_name: str):
-    query = f"""CREATE TABLE Orders (
-    AdsDate TEXT PRIMARY KEY,
-    Ads_id TEXT,
-    FOREIGN KEY (Ads_id) REFERENCES {table_name}(Ads_id)
+def Add_Date_to_referenced_table(conn: sqlite3.Connection, Unique_id: str):
+    # Create the cursor from the connection
+    cursor = conn.cursor()
+
+    query = f"""CREATE TABLE IF NOT EXISTS Date_Observed (
+    AdsDate TEXT,
+    Ads_id TEXT PRIMARY KEY,
+    FOREIGN KEY (Ads_id) REFERENCES {Table_name}(Ads_id)
 );"""
 
-    #TODO adding Foregin key with dates to programme
-    pass
+    query_new_record = """INSERT INTO Date_Observed (AdsDate, Ads_id) VALUES (?, ?)"""
+
+    #Making new table if not EXIST
+    cursor.execute(query)
+
+    try:
+        #Instering actual date to referenced table
+        cursor.execute(query_new_record, (date.today().isoformat(), Unique_id))
+
+    except Exception as e:
+        print(f"""Error of printing to DB ocurred: {str(e)}""")
+
+    # Commit the changes
+    conn.commit()
+
+    #TODO Finish adding Foregin key with dates to programme
+
+def filter_new(connection: sqlite3.Connection, price_limit = None):
+
+    cursor = connection.cursor()
+    #In general to be independednt we coudl filter db about record from today date:
+    Single_item_filtering_query = """SELECT OLX.*
+    FROM OLX_scrapping_table AS OLX
+    INNER JOIN (
+        SELECT Ads_id
+        FROM Date_Observed
+        GROUP BY Ads_id
+        HAVING COUNT(*) = 1
+    ) AS DO ON OLX.Ads_id = DO.Ads_id
+    """
+
+
+
+    if isinstance(price_limit, int) and price_limit > 0:
+        Single_item_filtering_query += f""" WHERE Price_per_meter2 < {price_limit}"""
+
+    cursor.execute(Single_item_filtering_query)
+    rows = cursor.fetchall()
+
+    for row in rows:
+        print(row)
+
+
+    #To dconsider is that this function will add record to Db and try to send it, or just build message na dthen try to send it
+
