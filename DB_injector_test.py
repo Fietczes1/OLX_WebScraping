@@ -27,6 +27,5 @@ def test_Add_Date_to_referenced_table():
     assert Add_Date_to_referenced_table(conn,  "828229765") == True
 
 def test_filter_new():
-
-
     assert filter_new(conn, 10000) == True
+    assert filter_new(conn, 10000, 30) == True

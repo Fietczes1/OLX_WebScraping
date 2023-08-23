@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 from tabulate import tabulate
 from datetime import date
 from Db_Injector import data_injection, data_injection_by_url, filter_new, connect_to_database
+from SMS_module import SMS_content_adjuster #,Send_message
 import re
 
 url = "https://www.olx.pl/nieruchomosci/mieszkania/krakow/q-Mieszkanie/?search%5Bfilter_float_price:from%5D=300000"
@@ -169,8 +170,11 @@ for elements in data:
     #TODO add date.today() to implement  principles of database normalization
     data_injection_by_url(elements, 'your_database.db' )
 
-#TODO change for automatic
-filter_new(connect_to_database('your_database.db'), 1000)
+#TODO change for automatic filter addition
+list_new_items = filter_new(connect_to_database('your_database.db'), 10000, 30) #new  items according restriction
+
+for item in list_new_items:
+    print(SMS_content_adjuster(item))
 
 
 # # Print the table

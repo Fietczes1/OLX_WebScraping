@@ -1,6 +1,6 @@
 
 import sqlite3
-from datetime import date
+from datetime import date, datetime
 
 Table_name = "OLX_scrapping_table"
 def connect_to_database(database_path: str):
@@ -145,31 +145,36 @@ def Add_Date_to_referenced_table(conn: sqlite3.Connection, Unique_id: str):
 
     #TODO Finish adding Foregin key with dates to programme
 
-def filter_new(connection: sqlite3.Connection, price_limit = None):
+def filter_new(connection: sqlite3.Connection, price_limit = None, flat_surface_down_limit = None):
 
     cursor = connection.cursor()
     #In general to be independednt we coudl filter db about record from today date:
     Single_item_filtering_query = """SELECT OLX.*
     FROM OLX_scrapping_table AS OLX
     INNER JOIN (
-        SELECT Ads_id
+        SELECT Ads_id, AdsDate
         FROM Date_Observed
         GROUP BY Ads_id
         HAVING COUNT(*) = 1
     ) AS DO ON OLX.Ads_id = DO.Ads_id
     """
 
-
+    Single_item_filtering_query += f""" WHERE AdsDate = \"{datetime.today().date().strftime('%Y-%m-%d')}\""""
 
     if isinstance(price_limit, int) and price_limit > 0:
-        Single_item_filtering_query += f""" WHERE Price_per_meter2 < {price_limit}"""
+        Single_item_filtering_query += f""" AND Price_per_meter2 < {price_limit}"""
 
+    if isinstance(flat_surface_down_limit, int) and flat_surface_down_limit > 0:
+        Single_item_filtering_query += f""" AND Area > {flat_surface_down_limit}"""
+
+    
     cursor.execute(Single_item_filtering_query)
     rows = cursor.fetchall()
 
     for row in rows:
         print(row)
 
+    return rows
 
     #To dconsider is that this function will add record to Db and try to send it, or just build message na dthen try to send it
 
