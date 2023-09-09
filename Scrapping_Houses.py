@@ -5,6 +5,7 @@ from tabulate import tabulate
 from datetime import date
 from Db_Injector import data_injection, data_injection_by_url, filter_new, connect_to_database
 from SMS_module import SMS_content_adjuster #,Send_message
+from Sending_SMS_GSM_modem_liblary import send_sms
 import re
 
 url = "https://www.olx.pl/nieruchomosci/mieszkania/krakow/q-Mieszkanie/?search%5Bfilter_float_price:from%5D=300000"
@@ -173,8 +174,9 @@ for elements in data:
 #TODO change for automatic filter addition
 list_new_items = filter_new(connect_to_database('your_database.db'), 10000, 30) #new  items according restriction
 
-for item in list_new_items:
+for index, item in enumerate(list_new_items):
     print(SMS_content_adjuster(item))
+    send_sms('+48721776456', f"SMS nr. {index}")
 
 
 # # Print the table

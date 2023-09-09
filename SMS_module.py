@@ -1,3 +1,5 @@
+
+
 def SMS_content_adjuster(Item_tuple: tuple):
     if len(Item_tuple) != 8:
         return "Invalid data length"
