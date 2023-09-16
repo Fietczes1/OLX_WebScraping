@@ -50,14 +50,29 @@ def data_injection(data: list, connection_object = None):
 
             # Execute the INSERT statement for each data row
             cursor.execute(query, data)
+
+        except sqlite3.Error as e:
+            print("Error inserting data to Main table:", e)
+            return False  # Return False indicating failure
+
+        try:
             Add_Date_to_referenced_table(connection_object, data[0])
+
+        except sqlite3.Error as e:
+            print("Error inserting data to Referenced table : ", e)
+            return False  # Return False indicating failure
+
+        try:
             # Commit the changes to the database
             connection_object.commit()
+        except sqlite3.Error as e:
+            print("Error inserting data Commit problem:", e)
+            return False  # Return False indicating failure
 
             #TODO adding to Db we need to make function for filtration what is down and named filter_and_send
 
             # # Close the database connection
-            # connection_object.close()
+            #connection_object.close()
 
             return True  # Return True indicating successful insertion
 
