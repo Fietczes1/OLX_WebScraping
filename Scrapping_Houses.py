@@ -1,11 +1,14 @@
 import bs4
 import requests
+import time
 from bs4 import BeautifulSoup
-from tabulate import tabulate
 from datetime import date
 from Db_Injector import data_injection, data_injection_by_url, filter_new, connect_to_database
-from SMS_module import SMS_content_adjuster #,Send_message
-from Sending_SMS_GSM_modem_liblary import send_sms
+from SMS_module import SMS_content_adjuster, add_line_to_string #,Send_message
+#from tabulate import tabulate
+#module import SMS_content_adjuster #,Send_message
+#from Sending_SMS_GSM_modem_liblary import send_sms
+from SMS_primivtive import send_sms
 import re
 
 url = "https://www.olx.pl/nieruchomosci/mieszkania/krakow/q-Mieszkanie/?search%5Bfilter_float_price:from%5D=300000"
@@ -55,8 +58,18 @@ def All_page_data_collector(page_Url: str) -> list:
     return data
 
 
+def url_check(line: str) -> str:
+    # Define the regular expression pattern to match lines starting with "d/"
+    pattern = r'^d/'
 
+    # Use re.sub to replace "d/" with "olx.pl" at the beginning of the line
+    replaced_line = re.sub(pattern, 'olx.pl', line)
 
+    # If the pattern is not matched, return the original line
+    if replaced_line == line:
+        return line
+    else:
+        return replaced_line
 
 
 def OLX_Household_data_gethering(soup: bs4.BeautifulSoup) -> list:
@@ -133,7 +146,8 @@ def OLX_Household_data_gethering(soup: bs4.BeautifulSoup) -> list:
 
         try:
             url_elem = card.find("a", class_="css-rc5s2u")
-            url = url_elem.get("href")
+            url = url_check(url_elem.get("href"))
+
         except AttributeError:
             pass
 
@@ -174,10 +188,20 @@ for elements in data:
 #TODO change for automatic filter addition
 list_new_items = filter_new(connect_to_database('your_database.db'), 10000, 30) #new  items according restriction
 
-for index, item in enumerate(list_new_items):
-    print(SMS_content_adjuster(item))
-    send_sms('+48721776456', f"SMS nr. {index}")
+if len(list_new_items) < 6:
 
+    for index, item in enumerate(list_new_items):
+        print(SMS_content_adjuster(item))
+        send_sms('+48721776456', index + ". " + SMS_content_adjuster(item))
+        time.sleep(5)
+        send_sms('+48509520947', index + ". " + SMS_content_adjuster(item))
 
+else:
+    message_text = ""
+    for index, item in enumerate(list_new_items):
+        add_line_to_string(index, item[6],  message_text)
+    send_sms('+48721776456', message_text)
+    time.sleep(5)
+    send_sms('+48509520947', message_text)
 # # Print the table
 # print(table)

@@ -21,3 +21,9 @@ def SMS_content_adjuster(Item_tuple: tuple):
 
     # Test the function
 
+
+def add_line_to_string(index, text, existing_string):
+    if existing_string:
+        existing_string += "\n"
+    existing_string += f"{index}. {text}"
+    return existing_string

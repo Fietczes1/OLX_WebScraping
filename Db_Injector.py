@@ -15,74 +15,119 @@ def DB_consistance_checker():
     #TODO
     print("DB_consistance_checker")
 
-def data_injection(data: list, connection_object = None):
-    #TODO data_validation
-    cursor = connection_object.cursor()
-    table_name = Table_name #get_today_table_name()
+def data_injection(data: list, connection_object=None):
+    result = True  # Initialize result as True
 
+    try:
+        cursor = connection_object.cursor()
+        table_name = Table_name  # get_today_table_name()
 
-    #In belove example UC_Columns12 is constraint name
-    cursor.execute(f'''
-            CREATE TABLE IF NOT EXISTS {table_name} (
-                Ads_id TEXT PRIMARY KEY,
-                Title TEXT,
-                Price INTEGER,
-                Location TEXT,
-                Area INTEGER,
-                Price_per_meter2 INTEGER,
-                URL TEXT,
-                Validity INTEGER,
-                CONSTRAINT Duplicate_restrainer UNIQUE (Ads_id, Title, URL)
-            )
-        ''')
+        cursor.execute(f'''
+                CREATE TABLE IF NOT EXISTS {table_name} (
+                    Ads_id TEXT PRIMARY KEY,
+                    Title TEXT,
+                    Price INTEGER,
+                    Location TEXT,
+                    Area INTEGER,
+                    Price_per_meter2 INTEGER,
+                    URL TEXT,
+                    Validity INTEGER,
+                    CONSTRAINT Duplicate_restrainer UNIQUE (Ads_id, Title, URL)
+                )
+            ''')
 
-    # Commit the changes to the database
-    connection_object.commit()
-
-    # All data checks passed, data is valid
-    #data = [operation_date, operation_name, account_number, bank_category, amount, classified_marker]
-    #TODO using below function become unnecessary as Db care about it by themself by contrains
-    if duplication_checker(data, cursor, table_name):
         # Prepare the SQL INSERT statement
-        query = f"INSERT INTO {table_name} (Ads_id ,Title, Price, Location, Area, Price_per_meter2, URL, Validity ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        query = f"INSERT INTO {table_name} (Ads_id, Title, Price, Location, Area, Price_per_meter2, URL, Validity) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
 
-        try:
+        # Execute the INSERT statement for each data row
+        cursor.execute(query, data)
 
-            # Execute the INSERT statement for each data row
-            cursor.execute(query, data)
+        # Insert data into the referenced table
+        Add_Date_to_referenced_table(connection_object, data[0])
 
-        except sqlite3.Error as e:
-            print("Error inserting data to Main table:", e)
-            return False  # Return False indicating failure
+        # Commit the changes to the database
+        connection_object.commit()
 
-        try:
-            Add_Date_to_referenced_table(connection_object, data[0])
+    except sqlite3.Error as e:
+        print("Error inserting data:", e)
+        result = False  # Set result to False indicating failure
 
-        except sqlite3.Error as e:
-            print("Error inserting data to Referenced table : ", e)
-            return False  # Return False indicating failure
+    finally:
+        connection_object.close()  # Close the database connection
 
-        try:
-            # Commit the changes to the database
-            connection_object.commit()
-        except sqlite3.Error as e:
-            print("Error inserting data Commit problem:", e)
-            return False  # Return False indicating failure
+    return result
 
-            #TODO adding to Db we need to make function for filtration what is down and named filter_and_send
 
-            # # Close the database connection
-            #connection_object.close()
+# def data_injection(data: list, connection_object = None):
+#     #TODO data_validation
+#     cursor = connection_object.cursor()
+#     table_name = Table_name #get_today_table_name()
+#
+#
+#     #In belove example UC_Columns12 is constraint name
+#     cursor.execute(f'''
+#             CREATE TABLE IF NOT EXISTS {table_name} (
+#                 Ads_id TEXT PRIMARY KEY,
+#                 Title TEXT,
+#                 Price INTEGER,
+#                 Location TEXT,
+#                 Area INTEGER,
+#                 Price_per_meter2 INTEGER,
+#                 URL TEXT,
+#                 Validity INTEGER,
+#                 CONSTRAINT Duplicate_restrainer UNIQUE (Ads_id, Title, URL)
+#             )
+#         ''')
+#
+#     # Commit the changes to the database
+#     connection_object.commit()
+#
+#     # All data checks passed, data is valid
+#     #data = [operation_date, operation_name, account_number, bank_category, amount, classified_marker]
+#         # Prepare the SQL INSERT statement
+#         query = f"INSERT INTO {table_name} (Ads_id ,Title, Price, Location, Area, Price_per_meter2, URL, Validity ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+#
+#         try:
+#
+#             # Execute the INSERT statement for each data row
+#             cursor.execute(query, data)
+#
+#         except sqlite3.Error as e:
+#             print("Error inserting data to Main table:", e)
+#             result = False # Return False indicating failure
+#
+#         try:
+#             Add_Date_to_referenced_table(connection_object, data[0])
+#
+#         except sqlite3.Error as e:
+#             print("Error inserting data to Referenced table : ", e)
+#             result = False  # Return False indicating failure
+#
+#         try:
+#             # Commit the changes to the database
+#             connection_object.commit()
+#         except sqlite3.Error as e:
+#             print("Error inserting data Commit problem:", e)
+#             result = False  # Return False indicating failure
+#
+#             #TODO adding to Db we need to make function for filtration what is down and named filter_and_send
+#
+#             # # Close the database connection
+#             #connection_object.close()
+#
+#             return True  # Return True indicating successful insertion
+#
+#         except sqlite3.Error as e:
+#             print("Error inserting data:", e)
+#             result = False # Return False indicating failure
+#
+#
+#
+#     result = True
+#     connection_object.close()
+#     return result
 
-            return True  # Return True indicating successful insertion
 
-        except sqlite3.Error as e:
-            print("Error inserting data:", e)
-            return False  # Return False indicating failure
-
-    else:
-
-        return True
 
 
 def data_injection_by_url(data: list, url):
