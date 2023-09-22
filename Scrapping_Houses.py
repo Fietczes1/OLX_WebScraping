@@ -192,14 +192,14 @@ if len(list_new_items) < 6:
 
     for index, item in enumerate(list_new_items):
         print(SMS_content_adjuster(item))
-        send_sms('+48721776456', index + ". " + SMS_content_adjuster(item))
+        send_sms('+48721776456', str(index + 1) + ". " + SMS_content_adjuster(item))
         time.sleep(5)
-        send_sms('+48509520947', index + ". " + SMS_content_adjuster(item))
+        send_sms('+48509520947', str(index + 1) + ". " + SMS_content_adjuster(item))
 
 else:
     message_text = ""
     for index, item in enumerate(list_new_items):
-        add_line_to_string(index, item[6],  message_text)
+        add_line_to_string(index + 1, item[6],  message_text)
     send_sms('+48721776456', message_text)
     time.sleep(5)
     send_sms('+48509520947', message_text)
