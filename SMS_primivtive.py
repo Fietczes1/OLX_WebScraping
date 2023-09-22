@@ -18,14 +18,14 @@ def send_sms(phone_number, message_text):
         # Enter recipient's phone number
         phone_number_cmd = f'AT+CMGS="{phone_number}"\r\n'.encode()
         ser.write(phone_number_cmd)
-        time.sleep(30)  # Wait for 1 second
+        time.sleep(5)  # Wait for 1 second
         response = ser.readline()
         print(response)
 
         # Enter message content and send
         message_cmd = f'{message_text}\x1A\r\n'.encode()
         ser.write(message_cmd)
-        time.sleep(30)  # Wait for 1 second
+        time.sleep(5)  # Wait for 1 second
 
         # Wait for response
         response = ser.readline()
