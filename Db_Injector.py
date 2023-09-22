@@ -240,3 +240,12 @@ def filter_new(connection: sqlite3.Connection, price_limit = None, flat_surface_
 
     #To dconsider is that this function will add record to Db and try to send it, or just build message na dthen try to send it
 
+# # Example usage:
+# if __name__ == "__main__":
+#     db_connection = sqlite3.connect("C://Users//PF_Server//your_database.db")  # Replace with your database file name
+#     filtered_data = filter_new(db_connection, price_limit=10000, flat_surface_down_limit=30, overall_price_limit=600000)
+#
+#     for row in filtered_data:
+#         print(row)
+#
+#     db_connection.close()

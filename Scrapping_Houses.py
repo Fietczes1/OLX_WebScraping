@@ -12,7 +12,7 @@ from SMS_primivtive import send_sms
 import re
 
 url = "https://www.olx.pl/nieruchomosci/mieszkania/krakow/q-Mieszkanie/?search%5Bfilter_float_price:from%5D=300000"
-
+Global_database_url = "C://Users//PF_Server//PycharmProjects//OLX_WebScraping//your_database.db"
 def Beatuiful_object_graber(olx_url: str) -> bs4.BeautifulSoup:
     response = requests.get(olx_url)
     soup = None
@@ -161,7 +161,7 @@ def line_by_line_data_appender(data :list) -> bool:
         #TODO
         #Check data for using function conn.executemany()
         # Code for inserting data into the database
-        data_injection(list, "your_database.db")
+        data_injection(list, Global_database_url)
         # ...
         return True  # Indicate successful insertion
     except Exception as e:
@@ -183,25 +183,28 @@ data = All_page_data_collector(url)
 for elements in data:
     elements.append(1)
     #TODO add date.today() to implement  principles of database normalization
-    data_injection_by_url(elements, 'your_database.db' )
+    data_injection_by_url(elements, Global_database_url )
 
 #TODO change for automatic filter addition
-list_new_items = filter_new(connect_to_database('your_database.db'), 10000, 30, 600000) #new  items according restriction
+list_new_items = filter_new(connect_to_database(Global_database_url), 10000, 30, 600000) #new  items according restriction
 
 if len(list_new_items) < 6:
 
     for index, item in enumerate(list_new_items):
-        print(SMS_content_adjuster(item))
+        print(str(index + 1) + ". " + SMS_content_adjuster(item))
         send_sms('+48721776456', str(index + 1) + ". " + SMS_content_adjuster(item))
         time.sleep(5)
         send_sms('+48509520947', str(index + 1) + ". " + SMS_content_adjuster(item))
 
 else:
-    message_text = ""
+    message_text = str()
     for index, item in enumerate(list_new_items):
-        add_line_to_string(index + 1, item[6],  message_text)
-    send_sms('+48721776456', message_text)
-    time.sleep(5)
-    send_sms('+48509520947', message_text)
+        message_text = add_line_to_string(str(index + 1), item[6],  message_text)
+        if (index + 1) % 10 == 0 or index == len(list_new_items) - 1:
+            print("text to send is: " + message_text)
+            send_sms('+48721776456', message_text)
+            time.sleep(5)
+            send_sms('+48509520947', message_text)
+            message_text = ""
 # # Print the table
 # print(table)
