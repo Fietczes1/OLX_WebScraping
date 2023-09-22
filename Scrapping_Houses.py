@@ -60,7 +60,7 @@ def All_page_data_collector(page_Url: str) -> list:
 
 def url_check(line: str) -> str:
     # Define the regular expression pattern to match lines starting with "d/"
-    pattern = r'^d/'
+    pattern = r'^/d'
 
     # Use re.sub to replace "d/" with "olx.pl" at the beginning of the line
     replaced_line = re.sub(pattern, 'olx.pl', line)
@@ -186,7 +186,7 @@ for elements in data:
     data_injection_by_url(elements, 'your_database.db' )
 
 #TODO change for automatic filter addition
-list_new_items = filter_new(connect_to_database('your_database.db'), 10000, 30) #new  items according restriction
+list_new_items = filter_new(connect_to_database('your_database.db'), 10000, 30, 600000) #new  items according restriction
 
 if len(list_new_items) < 6:
 

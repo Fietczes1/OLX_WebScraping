@@ -8,8 +8,15 @@ if platform.system() == "Windows":
 else:
     port = "/dev/ttyS0"  # Replace with your Raspberry Pi serial port
 
+# def send_sms(phone_number, message):
+#     with GsmModem(port= port, baudrate=115200) as modem:  # Adjust COM port and baud rate as needed
+#         modem.connect()
+#         modem.sendSms(phone_number, message)
+
 def send_sms(phone_number, message):
-    with GsmModem(port= port, baudrate=9600) as modem:  # Adjust COM port and baud rate as needed
-        modem.connect()
-        modem.sendSms(phone_number, message)
+    modem = GsmModem(port=port, baudrate=9600)  # Adjust COM port and baud rate as needed
+    modem.connect()
+    modem.sendSms(phone_number, message)
+    modem.disconnect()  # Disconnect the modem when done
+
 

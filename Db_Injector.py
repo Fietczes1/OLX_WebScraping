@@ -205,7 +205,7 @@ def Add_Date_to_referenced_table(conn: sqlite3.Connection, Unique_id: str):
 
     #TODO Finish adding Foregin key with dates to programme
 
-def filter_new(connection: sqlite3.Connection, price_limit = None, flat_surface_down_limit = None):
+def filter_new(connection: sqlite3.Connection, price_limit = None, flat_surface_down_limit = None, overall_price_limit = None):
 
     cursor = connection.cursor()
     #In general to be independednt we coudl filter db about record from today date:
@@ -227,6 +227,8 @@ def filter_new(connection: sqlite3.Connection, price_limit = None, flat_surface_
     if isinstance(flat_surface_down_limit, int) and flat_surface_down_limit > 0:
         Single_item_filtering_query += f""" AND Area > {flat_surface_down_limit}"""
 
+    if isinstance(overall_price_limit, int) and overall_price_limit > 0:
+        Single_item_filtering_query += f""" AND Price < {overall_price_limit}"""
     
     cursor.execute(Single_item_filtering_query)
     rows = cursor.fetchall()

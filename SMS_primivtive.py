@@ -3,7 +3,7 @@ import time
 
 def send_sms(phone_number, message_text):
     # Configure the serial port
-    ser = serial.Serial('COM3', 9600, timeout=30)
+    ser = serial.Serial('COM3', 9600, timeout=30)#It is crucial to use timeout as in this case some operation at SIM800C take a lot of time
 
     # Wait for the module to initialize
     time.sleep(5)
