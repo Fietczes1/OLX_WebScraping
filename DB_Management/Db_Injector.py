@@ -1,49 +1,47 @@
-
+import os
+import time
 import sqlite3
 from datetime import date, datetime
+from DB_Management.DB_injection_universal import construct_sql_queries
+from typing import Dict, Any, List
 
+
+#TODO elicit name form Name of Db url
 Table_name = "OLX_scrapping_table"
 def connect_to_database(database_path: str):
-    try:
-        conn = sqlite3.connect(database_path)
-        return conn
-    except Exception as e:
-        print(f"Error connecting to database: {e}")
-        return None
 
-def DB_consistance_checker():
-    #TODO
-    print("DB_consistance_checker")
+    if user_decision(database_path):
 
-def data_injection(data: list, connection_object=None):
+        try:
+            conn = sqlite3.connect(database_path)
+            return conn
+        except Exception as e:
+            print(f"Error connecting to database: {e}")
+            return None
+
+# def DB_consistance_checker():
+#     #TODO
+#     print("DB_consistance_checker")
+
+def data_injection(data: dict, connection_object=None):
     result = True  # Initialize result as True
 
     try:
         cursor = connection_object.cursor()
         table_name = Table_name  # get_today_table_name()
 
-        cursor.execute(f'''
-                CREATE TABLE IF NOT EXISTS {table_name} (
-                    Ads_id TEXT PRIMARY KEY,
-                    Title TEXT,
-                    Price INTEGER,
-                    Location TEXT,
-                    Area INTEGER,
-                    Price_per_meter2 INTEGER,
-                    URL TEXT,
-                    Validity INTEGER,
-                    CONSTRAINT Duplicate_restrainer UNIQUE (Ads_id, Title, URL)
-                )
-            ''')
+        Table_in_DB_creation_query, Query_to_insert_data = construct_sql_queries(table_name, data)
+
+        cursor.execute(Table_in_DB_creation_query)
 
         # Prepare the SQL INSERT statement
-        query = f"INSERT INTO {table_name} (Ads_id, Title, Price, Location, Area, Price_per_meter2, URL, Validity) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        query = Query_to_insert_data
 
         # Execute the INSERT statement for each data row
-        cursor.execute(query, data)
+        cursor.execute(query, tuple(data.values()))#I ahve to carry values, I cpoudl do it because During Building data everything is adding in proper order according list and Query in Db is maekd according list with order as well
 
         # Insert data into the referenced table
-        Add_Date_to_referenced_table(connection_object, data[0])
+        Add_Date_to_referenced_table(connection_object, data['Ads_id'])
 
         # Commit the changes to the database
         connection_object.commit()
@@ -53,6 +51,7 @@ def data_injection(data: list, connection_object=None):
         result = False  # Set result to False indicating failure
 
     finally:
+        print("Element Correctly added")
         connection_object.close()  # Close the database connection
 
     return result
@@ -145,38 +144,40 @@ def data_injection_by_url(data: list, url):
         return data_injection(data, connection_data)
     return False
 
-def get_today_table_name():
-    # Get the current date
-    current_date = date.today().strftime("%Y_%m_%d")
+# def get_today_table_name():
+#     # Get the current date
+#     current_date = date.today().strftime("%Y_%m_%d")
+#
+#     # Create a new table name based on the current date
+#     table_name = f"OLX_household_scrapping_{current_date}"
+#
+#     return table_name
 
-    # Create a new table name based on the current date
-    table_name = f"OLX_household_scrapping_{current_date}"
 
-    return table_name
-
-def duplication_checker(data: list, cursor: sqlite3.Cursor, Table: str):
-    return 1
-
-    #TODO we could do that by DbConstraint
-    # Extract the unique identifier from the data
-    #remove
-
-    unique_id = data[0]
-
-    # Check if a record with the same unique identifier already exists
-    cursor.execute(f'SELECT * FROM {Table} WHERE Ads_id = ?', (unique_id,))
-    existing_record = cursor.fetchone()
-
-    if existing_record:
-        print("Duplicated element")
-        #Add_Date_to_referenced_table()
-        return 0
-
-    else:
-        print("New element Added")
-        #TODO send SMS message
-        # Insert the new record into the database
-        return 1
+# THIS IS REMOVED AS FilTRATION IS MOVED TO DataBase
+# def duplication_checker(data: list, cursor: sqlite3.Cursor, Table: str):
+#     return 1
+#
+#     #TODO we could do that by DbConstraint
+#     # Extract the unique identifier from the data
+#     #remove
+#
+#     unique_id = data[0]
+#
+#     # Check if a record with the same unique identifier already exists
+#     cursor.execute(f'SELECT * FROM {Table} WHERE Ads_id = ?', (unique_id,))
+#     existing_record = cursor.fetchone()
+#
+#     if existing_record:
+#         print("Duplicated element")
+#         #Add_Date_to_referenced_table()
+#         return 0
+#
+#     else:
+#         print("New element Added")
+#         #TODO send SMS message
+#         # Insert the new record into the database
+#         return 1
 
 def Add_Date_to_referenced_table(conn: sqlite3.Connection, Unique_id: str):
     # Create the cursor from the connection
@@ -205,7 +206,8 @@ def Add_Date_to_referenced_table(conn: sqlite3.Connection, Unique_id: str):
 
     #TODO Finish adding Foregin key with dates to programme
 
-def filter_new(connection: sqlite3.Connection, price_limit = None, flat_surface_down_limit = None, overall_price_limit = None):
+
+def filter_new(connection: sqlite3.Connection, Price_MAX=None, Price_MIN=None, Area_MAX=None, Area_MIN=None, Price_per_meter2_MAX=None, Price_per_meter2_MIN=None ):
 
     cursor = connection.cursor()
     #In general to be independednt we coudl filter db about record from today date:
@@ -221,14 +223,33 @@ def filter_new(connection: sqlite3.Connection, price_limit = None, flat_surface_
 
     Single_item_filtering_query += f""" WHERE AdsDate = \"{datetime.today().date().strftime('%Y-%m-%d')}\""""
 
-    if isinstance(price_limit, int) and price_limit > 0:
-        Single_item_filtering_query += f""" AND Price_per_meter2 < {price_limit}"""
+    # if isinstance(Price_per_meter2_MAX, int) and Price_per_meter2_MAX > 0:
+    #     Single_item_filtering_query += f""" AND Price_per_meter2 < {Price_per_meter2_MAX}"""
+    #
+    # if isinstance(Area_MIN, int) and Area_MIN > 0:
+    #     Single_item_filtering_query += f""" AND Area > {Area_MIN}"""
+    #
+    # if isinstance(Price_MAX, int) and Price_MAX > 0:
+    #     Single_item_filtering_query += f""" AND Price < {Price_MAX}"""
 
-    if isinstance(flat_surface_down_limit, int) and flat_surface_down_limit > 0:
-        Single_item_filtering_query += f""" AND Area > {flat_surface_down_limit}"""
+    # Check and add filters for each argument
+    if isinstance(Price_MAX, int) and Price_MAX > 0:
+        Single_item_filtering_query += f" AND Price < {Price_MAX}"
 
-    if isinstance(overall_price_limit, int) and overall_price_limit > 0:
-        Single_item_filtering_query += f""" AND Price < {overall_price_limit}"""
+    if isinstance(Price_MIN, int) and Price_MIN > 0:
+        Single_item_filtering_query += f" AND Price > {Price_MIN}"
+
+    if isinstance(Area_MAX, int) and Area_MAX > 0:
+        Single_item_filtering_query += f" AND Area < {Area_MAX}"
+
+    if isinstance(Area_MIN, int) and Area_MIN > 0:
+        Single_item_filtering_query += f" AND Area > {Area_MIN}"
+
+    if isinstance(Price_per_meter2_MAX, int) and Price_per_meter2_MAX > 0:
+        Single_item_filtering_query += f" AND Price_per_meter2 < {Price_per_meter2_MAX}"
+
+    if isinstance(Price_per_meter2_MIN, int) and Price_per_meter2_MIN > 0:
+        Single_item_filtering_query += f" AND Price_per_meter2 > {Price_per_meter2_MIN}"
     
     cursor.execute(Single_item_filtering_query)
     rows = cursor.fetchall()
@@ -249,3 +270,31 @@ def filter_new(connection: sqlite3.Connection, price_limit = None, flat_surface_
 #         print(row)
 #
 #     db_connection.close()
+
+
+def user_decision(path: str, timeout=60):
+    # Check if the file and path exist
+    if os.path.exists(path):
+        return True
+    else:
+        start_time = time.time()
+        user_input = None
+        while (time.time() - start_time) < timeout:
+            print(f"The file {path} does not exist. Do you want to create it? (Y/N): ", end='', flush=True)
+            user_input = input()
+            if user_input:
+                break
+            else:
+                print(f"No input detected. You have {timeout - int(time.time() - start_time)} seconds left to decide.")
+                time.sleep(2)  # Sleep for a moment before asking again
+
+        if not user_input or user_input.strip().lower() != 'y':
+            print("No valid input received within the timeout period or input was 'N'.")
+            return False
+
+        # User has responded with 'Y', create the file.
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w') as f:
+            f.write('')  # Write an empty string to create the file.
+        print(f"File created at {path}")
+        return True
