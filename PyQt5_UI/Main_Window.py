@@ -43,7 +43,8 @@ class App(QWidget):
 
 
         # Checkboxes
-        self.attributes = ["Ads_id", "Title", "Price", "Location", "Area", "Price_per_meter2", "URL", "Validity"]
+        #self.attributes = ["Ads_id", "Title", "Price", "Location", "Area", "Price_per_meter2", "URL", "Validity"]
+        self.attributes = ["Price", "Area", "Price_per_meter2"]
         self.checkboxes = {}
         self.text_fields = {}
 
