@@ -1,10 +1,21 @@
 import time
 
+import sys
+import os
+
+# Get the current script directory
+script_directory = os.path.dirname(os.path.abspath(__file__))
+
+# Move one folder up in the directory structure
+parent_directory = os.path.abspath(os.path.join(script_directory, os.pardir))
+
+# Add the parent directory to sys.path
+sys.path.insert(0, parent_directory)
+
 from DB_Management.Db_Injector import data_injection_by_url, filter_new, connect_to_database
 from SMS_Module.SMS_module import SMS_content_adjuster, add_line_to_string
 from SMS_Module.SMS_primivtive import send_sms
 from Scrapping_Houses import *
-import sys
 import argparse
 
 
@@ -33,13 +44,22 @@ def Argument_Parser():
     # print("DB_url:", DB_url)
     # print("Elements_to_extract:", Elements_to_extract)
 
+# sys.argv = [
+#     "script_name.py",
+#     "--URL",  r'https://www.olx.pl/oferty/q-Silnik-Bafang-BBS02/?search%5Bfilter_float_price:from%5D=500&search%5Bfilter_float_price:to%5D=1000',
+#     "--DB_url", r'C:\Users\njvtwk\PycharmProjects\WebScrappingOLX\Bafang.db',
+#     "--Element_to_extract", "Ads_id", "Title", "Price", "Location", "URL", "Validity",
+#     "--Limitation_Dict", "Price_MAX", "1200", "Price_MIN", "600"
+# ]
+
 sys.argv = [
-    "script_name.py",
-    "--URL",  r'https://www.olx.pl/oferty/q-Silnik-Bafang-BBS02/?search%5Bfilter_float_price:from%5D=500&search%5Bfilter_float_price:to%5D=1000',
-    "--DB_url", r'C:\Users\njvtwk\PycharmProjects\WebScrappingOLX\Bafang.db',
-    "--Element_to_extract", "Ads_id", "Title", "Price", "Location", "URL", "Validity",
-    "--Limitation_Dict", "Price_MAX", "1200", "Price_MIN", "600"
+    r"C:/Users/Lenovo/PycharmProjects/OLX_WebScraping/General_Project_Files/Main_file.py",
+    "--URL", "https://www.olx.pl/nieruchomosci/mieszkania/krakow/q-Mieszkanie/?search%5Bfilter_float_price:from%5D=300000",
+    "--DB_url", r"C:/Users/Lenovo/PycharmProjects/OLX_WebScraping/DataBases/your_database.db",
+    "--Element_to_extract", "Price", "Area", "Price_per_meter2",
+    "--Limitation_Dict", "Price_MAX", "600000", "Area_MIN", "30", "Price_per_meter2_MAX", "11500", "Price_per_meter2_MIN", "8000"
 ]
+
 
 if __name__ == "__main__":
 
