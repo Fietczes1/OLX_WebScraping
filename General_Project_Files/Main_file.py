@@ -52,30 +52,44 @@ def Argument_Parser():
 #     "--Limitation_Dict", "Price_MAX", "1200", "Price_MIN", "600"
 # ]
 
-sys.argv = [
-    r"C:/Users/Lenovo/PycharmProjects/OLX_WebScraping/General_Project_Files/Main_file.py",
-    "--URL", "https://www.olx.pl/nieruchomosci/mieszkania/krakow/q-Mieszkanie/?search%5Bfilter_float_price:from%5D=300000",
-    "--DB_url", r"C:/Users/Lenovo/PycharmProjects/OLX_WebScraping/DataBases/your_database.db",
-    "--Element_to_extract", "Price", "Area", "Price_per_meter2",
-    "--Limitation_Dict", "Price_MAX", "600000", "Area_MIN", "30", "Price_per_meter2_MAX", "11500", "Price_per_meter2_MIN", "8000"
-]
+# sys.argv = [
+#     r"C:/Users/Lenovo/PycharmProjects/OLX_WebScraping/General_Project_Files/Main_file.py",
+#     "--URL", "https://www.olx.pl/nieruchomosci/mieszkania/krakow/q-Mieszkanie/?search%5Bfilter_float_price:from%5D=300000",
+#     "--DB_url",  "C:/Users/PF_Server/PycharmProjects/OLX_WebScraping/your_database.db", #r"C:/Users/Lenovo/PycharmProjects/OLX_WebScraping/DataBases/your_database.db",
+#     "--Element_to_extract", "Price", "Area", "Price_per_meter2",
+#     "--Limitation_Dict", "Price_MAX", "600000", "Area_MIN", "30", "Price_per_meter2_MAX", "11500", "Price_per_meter2_MIN", "8000"
+# ]
+
+# sys.argv = [
+#     "C:/Users/PF_Server/PycharmProjects/OLX_WebScraping/General_Project_Files/Main_file.py",
+#     "--URL", "https://www.olx.pl/nieruchomosci/mieszkania/krakow/?search%5Bdistrict_id%5D=463&search%5Bfilter_float_price:from%5D=300000",
+#     "--DB_url",  "C:/Users/PF_Server/PycharmProjects/OLX_WebScraping/Database_Mistrzejowice.db",
+#     "--Element_to_extract", "Price", "Area", "Price_per_meter2",
+#     "--Limitation_Dict", "Price_MAX", "600000", "Area_MAX", "60", "Area_MIN", "35", "Price_per_meter2_MAX", "12500", "Price_per_meter2_MIN", "11000"
+# ]
+
+
 
 
 if __name__ == "__main__":
 
-
+    print(sys.argv)
 
     args, Limitation_Dict = Argument_Parser()
 
     # Access the named arguments
     if args.URL != None:
         URL = args.URL
+        print(URL)
     if args.DB_url != None:
         DB_url = args.DB_url
+        print(DB_url)
     if args.Element_to_extract != None:
         Elements_to_extract = args.Element_to_extract
+        print(Elements_to_extract)
     if Limitation_Dict:
         my_dict = Limitation_Dict
+        print(my_dict)
     else:
         my_dict = {}
 
@@ -89,32 +103,40 @@ if __name__ == "__main__":
     # Generate the table
     #printable_table = tabulate(data, headers, tablefmt="fancy_grid")
 
-    for elements in data:
-        elements['Validity'] = 1
-        #TODO add date.today() to implement  principles of database normalization
+    connection_data = connect_to_database(DB_url)
+    if connection_data != None:
 
-        data_injection_by_url(elements, DB_url)
 
-    #TODO change for automatic filter addition
-    list_new_items = filter_new(connect_to_database(DB_url), **my_dict) #new  items according restriction
+        for elements in data:
+            elements['Validity'] = 1
+            #TODO add date.today() to implement  principles of database normalization
 
-    if len(list_new_items) < 6:
+            data_injection(elements, connection_data)
 
-        for index, item in enumerate(list_new_items):
-            print(str(index + 1) + ". " + SMS_content_adjuster(item))
-            send_sms('+48721776456', str(index + 1) + ". " + SMS_content_adjuster(item))
-            time.sleep(5)
-            send_sms('+48509520947', str(index + 1) + ". " + SMS_content_adjuster(item))
 
-    else:
-        message_text = str()
-        for index, item in enumerate(list_new_items):
-            message_text = add_line_to_string(str(index + 1), item[6],  message_text)
-            if (index + 1) % 10 == 0 or index == len(list_new_items) - 1:
-                print("text to send is: " + message_text)
-                send_sms('+48721776456', message_text)
+        #TODO change for automatic filter addition
+        list_new_items = filter_new(connection_data, **my_dict) #new  items according restriction
+        print(list_new_items)
+        #input("Code is paused after filtering")
+        connection_data.close()  # Close the database connection
+
+        if len(list_new_items) < 6:
+
+            for index, item in enumerate(list_new_items):
+                print(str(index + 1) + ". " + SMS_content_adjuster(item))
+                send_sms('+48721776456', str(index + 1) + ". " + SMS_content_adjuster(item))
                 time.sleep(5)
-                send_sms('+48509520947', message_text)
-                message_text = ""
-    # # Print the table
-    # print(table)
+                send_sms('+48509520947', str(index + 1) + ". " + SMS_content_adjuster(item))
+
+        else:
+            message_text = str()
+            for index, item in enumerate(list_new_items):
+                message_text = add_line_to_string(str(index + 1), item[6],  message_text)
+                if (index + 1) % 10 == 0 or index == len(list_new_items) - 1:
+                    print("text to send is: " + message_text)
+                    send_sms('+48721776456', message_text)
+                    time.sleep(5)
+                    send_sms('+48509520947', message_text)
+                    message_text = ""
+        # # Print the table
+        # print(table)

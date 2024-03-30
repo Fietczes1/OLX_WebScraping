@@ -1,11 +1,15 @@
+import time
+
 import bs4
 
+from bs4 import BeautifulSoup
+
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
-from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from bs4 import BeautifulSoup
 
 from DB_Management.Db_Injector import data_injection
 #from tabulate import tabulate
@@ -26,11 +30,11 @@ attrs = {
 
 # List of elements you want to extract
 Elements_to_extract = ["Ads_id", "Title", "Price", "Location", "Area", "Price_per_meter2", "URL", "Validity"] #It will be input From interface
-KEYS_ORDER =  ["Ads_id", "Title", "Price", "Location", "Area", "Price_per_meter2", "URL", "Validity"]
+KEYS_ORDER = ["Ads_id", "Title", "Price", "Location", "Area", "Price_per_meter2", "URL", "Validity"]
 
-URL = "https://www.olx.pl/nieruchomosci/mieszkania/krakow/q-Mieszkanie/?search%5Bfilter_float_price:from%5D=300000"
-DB_url = "your_database.db" #"C://Users//PF_Server//PycharmProjects//OLX_WebScraping//your_database.db"
-
+#URL = "https://www.olx.pl/nieruchomosci/mieszkania/krakow/q-Mieszkanie/?search%5Bfilter_float_price:from%5D=300000"
+#DB_url = "your_database.db" #"C://Users//PF_Server//PycharmProjects//OLX_WebScraping//your_database.db"
+css_selector = "div[data-cy='l-card']"  # Single element with Advertisement selector
 def Beatuiful_object_graber(olx_url: str) -> bs4.BeautifulSoup:
     """
     Navigates to the given URL, waits for a specific element to be visible,
@@ -43,26 +47,43 @@ def Beatuiful_object_graber(olx_url: str) -> bs4.BeautifulSoup:
     BeautifulSoup: A BeautifulSoup object containing the page's HTML.
     """
 
-    # Set up Selenium to use Firefox in headless mode
-    options = Options()
-    options.headless = True
-    driver = webdriver.Firefox(options=options)
+    # Set up Selenium to use Chrome with the WebDriver Manager
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service)
 
-    try:
-        # Navigate to the page
-        driver.get(olx_url)
+    attempt = 0
+    max_attempts = 3
+    wait_time = 20  # Increased wait time
+    response = str()
 
-        # Wait for the specific element to be visible
-        WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.CSS_SELECTOR, "div[data-cy='l-card']"))
-        )
+    print(f"Trying to elicit data for: {olx_url}")
 
-        # Get the page source
-        response = driver.page_source
+    while len(response) == 0 and attempt < max_attempts:
 
-    finally:
-        # Don't forget to close the driver
-        driver.quit()
+        try:
+            # Navigate to the page
+            driver.get(olx_url)
+
+            # Wait for the specific element to be visible
+            WebDriverWait(driver, wait_time).until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, css_selector))
+            )
+
+            time.sleep(2)
+
+            # Get the page source
+            response = driver.page_source
+
+
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed: {e}")
+
+            attempt += 1
+            time.sleep(20)
+
+        finally:
+            # Don't forget to close the driver
+            driver.quit()
 
 
     #response = requests.get(olx_url) #oldsolution
@@ -82,7 +103,7 @@ def Beatuiful_object_graber(olx_url: str) -> bs4.BeautifulSoup:
 
 def next_page_rl_graber(Soup_object: bs4.BeautifulSoup):
     Next_page_button = Soup_object.find_all("a", {"data-cy" : "pagination-forward"})
-    if Next_page_button != []:
+    if Next_page_button != [] and Soup_object.find("p", {"class" : "css-1oc165u er34gjf0"}) == None:
         Next_page_URL = Next_page_button[0].get("href")
         return Next_page_URL
     else:
@@ -128,14 +149,10 @@ def url_check(line: str) -> str:
         return replaced_line
 
 
-# Function to correct the URL, assuming you have defined it somewhere
-def url_check(url: str) -> str:
-    # Your url_check implementation goes here
-    return url
-
 
 
 def extract_all_rows(soup: bs4.BeautifulSoup):
+    soup = soup.find("div", attrs={"data-testid": "listing-grid"})
     # Find all the advertisement cards
     ad_cards = soup.find_all("div", {"data-cy": "l-card"})
     extracted_data = []
@@ -161,9 +178,9 @@ def dict_to_list(data_dict: Dict[str, Any], keys_order: List[str]) -> List[Union
 #Function to make scrapper Universal and This function will only Generate single row of Data for item
 def extract_data(card: bs4.Tag, attrs: Dict[str, str], elements: List[str]) -> Dict[str, Union[str, int, float, None]]:
     data = {}
-    price_pattern = r"(\d{1,3}(?: \d{3})*) zł"
+    price_pattern = r"(\d+(?: \d+)*(?:,\d{2})*) zł"
     price_per_sqm_pattern = r"(\d{1,5}[.,]?\d{0,5}?)\s*zł\/m²"
-    sqm_pattern = r"(\d+)\s*m²"
+    sqm_pattern = r"(\d+(?:,\d{2})?)\s*m²"
 
 
 
@@ -199,8 +216,17 @@ def extract_data(card: bs4.Tag, attrs: Dict[str, str], elements: List[str]) -> D
                 data['Price_per_meter2'] = float(price_per_sqm_match.group(1).replace(",", ".")) if price_per_sqm_match else None
 
             if 'Area' in elements:
+                proper_str_float_construction_of_sqm_match = str()
                 sqm_match = re.search(sqm_pattern, area_elem.text)
-                data['Area'] = int(sqm_match.group(1)) if sqm_match else None
+                if sqm_match is not None:
+                    proper_str_float_construction_of_sqm_match = sqm_match.group(1)
+                    if ',' in proper_str_float_construction_of_sqm_match:
+                        proper_str_float_construction_of_sqm_match = proper_str_float_construction_of_sqm_match.replace(',','.')
+                    data['Area'] = int(float(proper_str_float_construction_of_sqm_match))
+                else:
+                    data['Area'] = None
+
+
         except AttributeError:
             if 'Price_per_meter2' in elements:
                 data['Price_per_meter2'] = None

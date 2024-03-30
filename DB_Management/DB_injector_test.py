@@ -1,6 +1,9 @@
 import sqlite3
+import sys
+
 
 from DB_Management.Db_Injector import data_injection_by_url, Add_Date_to_referenced_table, filter_new
+from General_Project_Files.Main_file import Argument_Parser
 
 conn = sqlite3.connect('../your_database.db')  # Creates a connection object
 cursor = conn.cursor()  # Creates a cursor object
@@ -34,4 +37,13 @@ def test_filter_new():
     assert filter_new(conn, Price_per_meter2_MAX= 10000, Area_MIN= 30) == True
     #assert filter_new(conn_mock, )
 
+# def test_Argument_Parser():
+#     sys.argv = [
+#         "script_name.py",
+#         "--URL",  r'https://www.olx.pl/oferty/q-Silnik-Bafang-BBS02/?search%5Bfilter_float_price:from%5D=500&search%5Bfilter_float_price:to%5D=1000',
+#         "--DB_url", r'C:\Users\njvtwk\PycharmProjects\WebScrappingOLX\Bafang.db',
+#         "--Element_to_extract", "Ads_id", "Title", "Price", "Location", "URL", "Validity",
+#         "--Limitation_Dict", "Price_MAX", "1200", "Price_MIN", "600"
+#     ]
+#     assert Argument_Parser() ==
 

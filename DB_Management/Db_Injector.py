@@ -1,4 +1,5 @@
 import os
+import threading
 import time
 import sqlite3
 from datetime import date, datetime
@@ -38,7 +39,9 @@ def data_injection(data: dict, connection_object=None):
         query = Query_to_insert_data
 
         # Execute the INSERT statement for each data row
+        print("Query to Db: ", query, " data to put in query ", tuple(data.values()))
         cursor.execute(query, tuple(data.values()))#I ahve to carry values, I cpoudl do it because During Building data everything is adding in proper order according list and Query in Db is maekd according list with order as well
+
 
         # Insert data into the referenced table
         Add_Date_to_referenced_table(connection_object, data['Ads_id'])
@@ -52,7 +55,7 @@ def data_injection(data: dict, connection_object=None):
 
     finally:
         print("Element Correctly added")
-        connection_object.close()  # Close the database connection
+        #connection_object.close()  # Close the database connection
 
     return result
 
@@ -129,7 +132,7 @@ def data_injection(data: dict, connection_object=None):
 
 
 
-def data_injection_by_url(data: list, url):
+def data_injection_by_url(data: list, url: str):
     """
     This is to give opportunity to USE URL to Db. To be universal
     Function inside is predicted to use, mainly in programme.
@@ -250,8 +253,10 @@ def filter_new(connection: sqlite3.Connection, Price_MAX=None, Price_MIN=None, A
 
     if isinstance(Price_per_meter2_MIN, int) and Price_per_meter2_MIN > 0:
         Single_item_filtering_query += f" AND Price_per_meter2 > {Price_per_meter2_MIN}"
-    
+
+    print(Single_item_filtering_query)
     cursor.execute(Single_item_filtering_query)
+    print(cursor.description)
     rows = cursor.fetchall()
 
     for row in rows:
@@ -270,27 +275,32 @@ def filter_new(connection: sqlite3.Connection, Price_MAX=None, Price_MIN=None, A
 #         print(row)
 #
 #     db_connection.close()
-
+def input_with_timeout(prompt, timeout):
+    #timeout is in seconds
+    print(prompt)
+    result = [None]
+    def get_input():
+        result[0] = input()
+    input_thread = threading.Thread(target=get_input)
+    input_thread.start()
+    input_thread.join(timeout)
+    if input_thread.is_alive():
+        print("Time is up!")
+        return None
+    else:
+        return result[0]
 
 def user_decision(path: str, timeout=60):
     # Check if the file and path exist
     if os.path.exists(path):
         return True
     else:
-        start_time = time.time()
-        user_input = None
-        while (time.time() - start_time) < timeout:
-            print(f"The file {path} does not exist. Do you want to create it? (Y/N): ", end='', flush=True)
-            user_input = input()
-            if user_input:
-                break
-            else:
-                print(f"No input detected. You have {timeout - int(time.time() - start_time)} seconds left to decide.")
-                time.sleep(2)  # Sleep for a moment before asking again
 
-        if not user_input or user_input.strip().lower() != 'y':
-            print("No valid input received within the timeout period or input was 'N'.")
-            return False
+        #user_input = input_with_timeout(f"The file {path} does not exist. Do you want to create it? (Y/N): ", timeout)
+
+        # if not user_input or user_input.strip().lower() != 'y':
+        #     print("No valid input received within the timeout period or input was 'N'.")
+        #     return False
 
         # User has responded with 'Y', create the file.
         os.makedirs(os.path.dirname(path), exist_ok=True)

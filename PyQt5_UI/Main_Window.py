@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QCheckBox, QTextEdit, QPushButton
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QCheckBox, QTextEdit, QPushButton, QMessageBox
 from PyQt5.QtGui import QValidator
 from urllib.parse import urlparse
 
@@ -92,7 +92,27 @@ class App(QWidget):
                 self.text_fields[f"{keys}_MIN"].setText("")
                 self.text_fields[f"{keys}_MAX"].setText("")
 
+    def escape_special_characters(self, input_string: str):
+        special_characters = {
+            '^': '^^',
+            '%': '%%',
+            '&': '^&',
+            '<': '^<',
+            '>': '^>',
+            '|': '^|',
+            '"': '^"'
+        }
+        escaped_string = input_string
+        for char, escape_seq in special_characters.items():
+            escaped_string = escaped_string.replace(char, escape_seq)
+        return escaped_string
+
     def generate_cmd(self):
+        if self.value_validation()[0] == 0:
+            # Display a message box with information
+            QMessageBox.information(self, 'Warning', f'MIN and MAX restriction form {self.value_validation()[1]} overlapping.')
+            return 0
+
         url = self.url_input.text()
         db_url = f"{self.database_input.text()}"
         checked_attributes = ' '.join(
@@ -100,10 +120,21 @@ class App(QWidget):
         filter_values = ' '.join([f"{key} {Value.text()}" for key, Value in self.text_fields.items() if Value.isEnabled() == True and Value.text()])
 
         # Construct the command
-        cmd = f'python Main_file.py --URL "{url}" --DB_url "{db_url}" --Element_to_extract {checked_attributes} --Limitation_Dict {filter_values}'
+        cmd = f'python Main_file.py --URL "{self.escape_special_characters(url)}" --DB_url "{db_url}" --Element_to_extract {checked_attributes} --Limitation_Dict {filter_values}'
 
         # Display the generated command in the text area
         self.text_area.setText(cmd)
+
+    def value_validation(self) -> list :
+        for items in self.attributes:
+
+            try:
+                if self.text_fields[f"{items}_MIN"].text() and self.text_fields[f"{items}_MAX"].text() and int(self.text_fields[f"{items}_MIN"].text()) >= int(self.text_fields[f"{items}_MAX"].text()):
+                    return [0, items]
+            except ValueError:
+                print(f"Cannot convert one of value from {items} to an integer.")
+
+        return [1, None]
 
 
 if __name__ == '__main__':
