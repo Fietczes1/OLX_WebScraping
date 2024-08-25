@@ -5,6 +5,9 @@ import sqlite3
 from datetime import date, datetime
 from DB_Management.DB_injection_universal import construct_sql_queries
 from typing import Dict, Any, List
+from EXCELL_file_management.Excell_management import add_rows_to_excell_file_openpyxl_2
+
+import pandas as pd
 
 
 #TODO elicit name form Name of Db url
@@ -26,12 +29,12 @@ def connect_to_database(database_path: str):
 
 def data_injection(data: dict, connection_object=None):
     result = True  # Initialize result as True
+    cursor = connection_object.cursor()
+    table_name = Table_name  # get_today_table_name()
+
+    Table_in_DB_creation_query, Query_to_insert_data = construct_sql_queries(table_name, data)
 
     try:
-        cursor = connection_object.cursor()
-        table_name = Table_name  # get_today_table_name()
-
-        Table_in_DB_creation_query, Query_to_insert_data = construct_sql_queries(table_name, data)
 
         cursor.execute(Table_in_DB_creation_query)
 
@@ -54,6 +57,7 @@ def data_injection(data: dict, connection_object=None):
         result = False  # Set result to False indicating failure
 
     finally:
+        cursor.close()
         print("Element Correctly added")
         #connection_object.close()  # Close the database connection
 
@@ -185,7 +189,7 @@ def data_injection_by_url(data: list, url: str):
 def Add_Date_to_referenced_table(conn: sqlite3.Connection, Unique_id: str):
     # Create the cursor from the connection
     cursor = conn.cursor()
-
+    current_data = date.today().isoformat()
     query = f"""CREATE TABLE IF NOT EXISTS Date_Observed (
     AdsDate TEXT,
     Ads_id TEXT PRIMARY KEY,
@@ -197,12 +201,14 @@ def Add_Date_to_referenced_table(conn: sqlite3.Connection, Unique_id: str):
     #Making new table if not EXIST
     cursor.execute(query)
 
+    print(current_data)
+    print(date.today().isoformat())
     try:
         #Instering actual date to referenced table
-        cursor.execute(query_new_record, (date.today().isoformat(), Unique_id))
+        cursor.execute(query_new_record, (current_data, Unique_id))
 
     except Exception as e:
-        print(f"""Error of printing to DB ocurred: {str(e)}""")
+        print(f"""Error of printing to DB referenced table ocurred: {str(e)}""")
 
     # Commit the changes
     conn.commit()
@@ -258,11 +264,11 @@ def filter_new(connection: sqlite3.Connection, Price_MAX=None, Price_MIN=None, A
     cursor.execute(Single_item_filtering_query)
     print(cursor.description)
     rows = cursor.fetchall()
+    columns = [column[0] for column in cursor.description]
 
-    for row in rows:
-        print(row)
+    add_rows_to_excell_file_openpyxl_2(r"C:\Users\PF_Server\PycharmProjects\OLX_WebScraping\General_Project_Files\Filtered_Flats.xlsx", rows, columns)
 
-    return rows
+    return (rows, columns)
 
     #To dconsider is that this function will add record to Db and try to send it, or just build message na dthen try to send it
 
@@ -308,3 +314,5 @@ def user_decision(path: str, timeout=60):
             f.write('')  # Write an empty string to create the file.
         print(f"File created at {path}")
         return True
+
+

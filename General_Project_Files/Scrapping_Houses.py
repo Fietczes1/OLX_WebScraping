@@ -21,7 +21,7 @@ from typing import List, Dict, Union, Any
 
 attrs = {
     'Title': "css-16v5mdi er34gjf0",
-    'Price': "css-10b0gli er34gjf0",
+    'Price': "ad-price",
     'Location': "css-veheph er34gjf0",
     'Area': "css-643j0o",
     'URL': "css-rc5s2u"
@@ -47,18 +47,24 @@ def Beatuiful_object_graber(olx_url: str) -> bs4.BeautifulSoup:
     BeautifulSoup: A BeautifulSoup object containing the page's HTML.
     """
 
-    # Set up Selenium to use Chrome with the WebDriver Manager
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service)
+
 
     attempt = 0
-    max_attempts = 3
-    wait_time = 20  # Increased wait time
+    max_attempts = 10
+    wait_time = 35  # Increased wait time
     response = str()
 
     print(f"Trying to elicit data for: {olx_url}")
 
     while len(response) == 0 and attempt < max_attempts:
+        #It have to be here as driver.close() for last opened Window terminate driver object
+        # Set up Selenium to use Chrome with the WebDriver Manager
+        try:
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service)
+        except Exception as e:
+            print(f"Driver initialization fail caused by error : {e}")
+            continue
 
         try:
             # Navigate to the page
@@ -79,17 +85,22 @@ def Beatuiful_object_graber(olx_url: str) -> bs4.BeautifulSoup:
             print(f"Attempt {attempt + 1} failed: {e}")
 
             attempt += 1
+            wait_time = wait_time + 5 * attempt
             time.sleep(20)
+            # Don't forget to close the driver
 
         finally:
-            # Don't forget to close the driver
-            driver.quit()
+            #driver.close()#Closes the current browser window or tab, but does not end the WebDriver session. If other tabs or windows are open, they remain open, and you can switch to them with Selenium commands. However, if the closed window was the last one, it behaves similar to quit() in that the WebDriver session ends.
+            driver.quit() #Closes all browser windows and ends the WebDriver session entirely. If you use driver.quit(), any subsequent calls to WebDriver will require you to instantiate a new driver, effectively restarting the entire process.
 
+    if attempt == max_attempts:
+
+        exit(0) # I using this method of finalysing code to didnt rise error in command line
 
     #response = requests.get(olx_url) #oldsolution
 
-    # Don't forget to close the driver
-    driver.quit()
+    # # Don't forget to close the driver
+    # driver.quit()
 
     soup = None
     try:
@@ -110,29 +121,30 @@ def next_page_rl_graber(Soup_object: bs4.BeautifulSoup):
         return False
 
 
-def All_page_data_collector(page_Url: str) -> list:
+def All_page_data_collector(page_Url: str, list_container = None) -> list:
     """
     This function Is responsible for collecting data across all page scope.
 
     :param page_Url: It's starting URL (this url have to consist list of searched elements)
     :return:
     """
-    data = []
+    if list_container == None:
+        list_container = []
 
     while page_Url:
         #Bs - obejct
         Soup_object = Beatuiful_object_graber(page_Url)
 
         #data.extend(OLX_Household_data_gethering(Soup_object))
-        data.extend(extract_all_rows(Soup_object))
-
+        list_container.extend(extract_all_rows(Soup_object))
+        #print(type(list_container))
         page_Url = next_page_rl_graber(Soup_object)
         if page_Url:
             page_Url = str("https://www.olx.pl" + next_page_rl_graber(Soup_object))
         else:
             print("Done")
 
-    return data
+    return list_container
 
 
 def url_check(line: str) -> str:
@@ -195,9 +207,9 @@ def extract_data(card: bs4.Tag, attrs: Dict[str, str], elements: List[str]) -> D
 
     if 'Price' in elements:
         try:
-            price_elem = card.find("p", class_=attrs['Price'])
-            price_zl = re.findall(price_pattern, price_elem.text.strip())[0].replace(" ", "")
-            data['Price'] = price_zl
+            price_elem = card.find("p", attrs={"data-testid" : attrs['Price']})
+            price_zl = re.findall(price_pattern, price_elem.text.strip())[0].replace(" ", "").replace(',', '.')
+            data['Price'] = int(float(price_zl))
         except (AttributeError, IndexError):
             data['Price'] = ""
 
@@ -235,7 +247,7 @@ def extract_data(card: bs4.Tag, attrs: Dict[str, str], elements: List[str]) -> D
 
     if 'URL' in elements:
         try:
-            url_elem = card.find("a", class_=attrs['URL'])
+            url_elem, _ = card.find_all(lambda tag: tag.has_attr('href'))
             data['URL'] = url_check(url_elem.get("href"))
         except AttributeError:
             data['URL'] = ""
@@ -322,7 +334,7 @@ def OLX_Household_data_gethering(soup: bs4.BeautifulSoup) -> list:
             pass
 
         try:
-            url_elem = card.find("a", class_="css-rc5s2u")
+            url_elem = card.find("a", class_="css-z3gu2d")#class_="css-rc5s2u")
             url = url_check(url_elem.get("href"))
 
         except AttributeError:

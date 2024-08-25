@@ -1,10 +1,19 @@
 
 
-def SMS_content_adjuster(Item_tuple: tuple):
+def SMS_content_adjuster(Item_tuple: dict):
     if len(Item_tuple) != 8:
         return "Invalid data length"
 
-    id, title, price, location_date, flat_area, price_per_m2, url, index = Item_tuple
+    id, title, price, location_date, flat_area, price_per_m2, url, index = (
+        Item_tuple["Ads_id"],
+        Item_tuple["Title"],
+        Item_tuple["Price"],
+        Item_tuple["Location"],
+        Item_tuple["Area"],
+        Item_tuple["Price_per_meter2"],
+        Item_tuple["URL"],
+        Item_tuple["Validity"]
+    )
 
     formatted_text = f"""
     --------------------
