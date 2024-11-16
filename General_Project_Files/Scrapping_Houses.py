@@ -11,6 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+
 from DB_Management.Db_Injector import data_injection
 #from tabulate import tabulate
 #module import SMS_content_adjuster #,Send_message
@@ -20,10 +21,10 @@ import re
 from typing import List, Dict, Union, Any
 
 attrs = {
-    'Title': "css-16v5mdi er34gjf0",
+    'Title': "css-1wxaaza",
     'Price': "ad-price",
     'Location': "css-veheph er34gjf0",
-    'Area': "css-643j0o",
+    'Area': "css-1cd0guq",
     'URL': "css-rc5s2u"
 }
 
@@ -60,8 +61,10 @@ def Beatuiful_object_graber(olx_url: str) -> bs4.BeautifulSoup:
         #It have to be here as driver.close() for last opened Window terminate driver object
         # Set up Selenium to use Chrome with the WebDriver Manager
         try:
-            service = Service(ChromeDriverManager().install())
+            #service = Service(ChromeDriverManager().install())
+            service = Service(r'C:\Users\PF_Server\Downloads\chromedriver-win64\chromedriver-win64\chromedriver.exe')
             driver = webdriver.Chrome(service=service)
+
         except Exception as e:
             print(f"Driver initialization fail caused by error : {e}")
             continue
@@ -215,13 +218,17 @@ def extract_data(card: bs4.Tag, attrs: Dict[str, str], elements: List[str]) -> D
 
     if 'Location' in elements:
         try:
-            data['Location'] = card.find("p", class_=attrs['Location']).text.strip()
+            data['Location'] = card.find("p", attrs= {'data-testid' : 'location-date'}).text.strip()
         except AttributeError:
             data['Location'] = ""
 
     if 'Area' in elements or 'Price_per_meter2' in elements:
         try:
             area_elem = card.find("span", class_=attrs['Area'])
+            if not area_elem:
+                area_elem = re.findall(r"[\d\s\.\,]+(?=m²).{10}[\d\s\.\,]+zł/m²", card.text)[0]
+
+
 
             if 'Price_per_meter2' in elements:
                 price_per_sqm_match = re.search(price_per_sqm_pattern, area_elem.text)
@@ -296,7 +303,7 @@ def OLX_Household_data_gethering(soup: bs4.BeautifulSoup) -> list:
             pass
 
         try:
-            title_elem = card.find("h6", class_="css-16v5mdi er34gjf0")
+            title_elem = card.find("h6", class_="css-1wxaaza")
             title = title_elem.text.strip()
         except AttributeError:
             pass
@@ -310,7 +317,7 @@ def OLX_Household_data_gethering(soup: bs4.BeautifulSoup) -> list:
             pass
 
         try:
-            location_elem = card.find("p", class_="css-veheph er34gjf0")
+            location_elem = card.find("p", attrs= {'data-testid' : 'location-date'})
             location = location_elem.text.strip()
         except AttributeError:
             pass

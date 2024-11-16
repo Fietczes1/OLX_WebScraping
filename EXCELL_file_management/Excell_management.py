@@ -20,14 +20,20 @@ def add_rows_to_excell_file_openpyxl_2(Filename: str, rows, columns):
             try:
                 # Load the existing workbook
                 workbook = load_workbook(Filename)
+
             except FileNotFoundError:
                 # If the file does not exist, create a new workbook
                 with pd.ExcelWriter(Filename, engine='openpyxl') as writer:
                     df.to_excel(writer, sheet_name=today_date, index=False)
                 print(f"File created successfully: {Filename}")
 
+            finally:
+                if today_date not in workbook.sheetnames:
 
-            if today_date in workbook.sheetnames:
+                    # If the sheet does not exist, create it
+                    with pd.ExcelWriter(Filename, engine='openpyxl', mode='a') as writer:
+                        df.to_excel(writer, sheet_name=today_date, index=False)
+
                 sheet = workbook[today_date]
                 # Find the next available row and add spacing
                 start_row = sheet.max_row + 2
@@ -39,12 +45,8 @@ def add_rows_to_excell_file_openpyxl_2(Filename: str, rows, columns):
                 for r_idx, row in enumerate(rows, start_row):
                     for c_idx, value in enumerate(row, 1):
                         sheet.cell(row=r_idx + 1, column=c_idx, value=value)
-            else:
-                # If the sheet does not exist, create it
-                with pd.ExcelWriter(Filename, engine='openpyxl', mode='a') as writer:
-                    df.to_excel(writer, sheet_name=today_date, index=False)
 
-                # Save the workbook
-            workbook.save(Filename)
-            print(f"Data appended successfully to {Filename}")
+                    # Save the workbook
+                workbook.save(Filename)
+                print(f"Data appended successfully to {Filename}")
 

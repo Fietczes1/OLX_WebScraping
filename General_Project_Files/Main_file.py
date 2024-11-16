@@ -22,6 +22,7 @@ from Scrapping_Houses import *
 from GUI_for_live_management.GUI_Main import main as gui_main
 from GUI_for_live_management.ObservableListClass import ObservableList
 import argparse
+from EXCELL_file_management.Excell_management import add_rows_to_excell_file_openpyxl_2
 
 #GUI implementation
 def start_gui(update_queue):
@@ -211,5 +212,9 @@ if __name__ == "__main__":
                     message_text = ""
         # # Print the table
         # print(table)
+        add_rows_to_excell_file_openpyxl_2(
+            r"C:\Users\PF_Server\PycharmProjects\OLX_WebScraping\General_Project_Files\Filtered_Flats.xlsx", list_new_items,
+            filtered_items_collumns)
+
     gui_process.terminate()
     exit()

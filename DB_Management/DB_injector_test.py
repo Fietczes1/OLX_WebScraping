@@ -6,8 +6,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'General_Project_Files')))
 
 
-from EXCELL_file_management.Excell_management import Add_rows_to_excell_file, add_rows_to_excell_file_openpyxl, \
-    test_function, add_rows_to_excell_file_openpyxl_2
+from EXCELL_file_management.Excell_management import add_rows_to_excell_file_openpyxl_2
 
 from DB_Management.Db_Injector import data_injection_by_url, Add_Date_to_referenced_table, filter_new
 from General_Project_Files.Main_file import Argument_Parser
