@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -24,7 +25,7 @@ attrs = {
     'Title': "css-1wxaaza",
     'Price': "ad-price",
     'Location': "css-veheph er34gjf0",
-    'Area': "css-1cd0guq",
+    'Area': "css-6as4g5", # "css-1cd0guq",
     'URL': "css-rc5s2u"
 }
 
@@ -36,6 +37,12 @@ KEYS_ORDER = ["Ads_id", "Title", "Price", "Location", "Area", "Price_per_meter2"
 #URL = "https://www.olx.pl/nieruchomosci/mieszkania/krakow/q-Mieszkanie/?search%5Bfilter_float_price:from%5D=300000"
 #DB_url = "your_database.db" #"C://Users//PF_Server//PycharmProjects//OLX_WebScraping//your_database.db"
 css_selector = "div[data-cy='l-card']"  # Single element with Advertisement selector
+
+
+#precompiled argument for function
+pattern = re.compile(r'^/d')
+pattern_dot_com = re.compile(r'^(www\.)?([a-zA-Z0-9\-]+\.(com|org|net|edu|gov|mil|[a-z]{2,3}))')
+
 def Beatuiful_object_graber(olx_url: str) -> bs4.BeautifulSoup:
     """
     Navigates to the given URL, waits for a specific element to be visible,
@@ -62,8 +69,13 @@ def Beatuiful_object_graber(olx_url: str) -> bs4.BeautifulSoup:
         # Set up Selenium to use Chrome with the WebDriver Manager
         try:
             #service = Service(ChromeDriverManager().install())
+            chromium_path = r'C:\Users\PF_Server\chrome\win64-128.0.6613.189\chrome-win64\chrome.exe'
+            # Configure ChromeOptions
+            options = Options()
+            options.binary_location = chromium_path
+
             service = Service(r'C:\Users\PF_Server\Downloads\chromedriver-win64\chromedriver-win64\chromedriver.exe')
-            driver = webdriver.Chrome(service=service)
+            driver = webdriver.Chrome(service=service, options=options)
 
         except Exception as e:
             print(f"Driver initialization fail caused by error : {e}")
@@ -117,7 +129,7 @@ def Beatuiful_object_graber(olx_url: str) -> bs4.BeautifulSoup:
 
 def next_page_rl_graber(Soup_object: bs4.BeautifulSoup):
     Next_page_button = Soup_object.find_all("a", {"data-cy" : "pagination-forward"})
-    if Next_page_button != [] and Soup_object.find("p", {"class" : "css-1oc165u er34gjf0"}) == None:
+    if Next_page_button != [] and Soup_object.find("p", {"class" : "css-196yitg"}) == None:
         Next_page_URL = Next_page_button[0].get("href")
         return Next_page_URL
     else:
@@ -152,16 +164,23 @@ def All_page_data_collector(page_Url: str, list_container = None) -> list:
 
 def url_check(line: str) -> str:
     # Define the regular expression pattern to match lines starting with "d/"
-    pattern = r'^/d'
+
+    #compiled as a global
+    # pattern = r'^/d'
+    # pattern_dot_com = r'^(www\.)?([a-zA-Z0-9\-]+\.(com|org|net|edu|gov|mil|[a-z]{2,3}))'
 
     # Use re.sub to replace "d/" with "olx.pl" at the beginning of the line
-    replaced_line = re.sub(pattern, 'olx.pl', line)
+    line = re.sub(pattern, 'olx.pl', line)
+
+    #adding HTTPS:// if lacking
+    if re.findall(pattern_dot_com, line):
+        line = "https://" + line
+        print(line)
 
     # If the pattern is not matched, return the original line
-    if replaced_line == line:
-        return line
-    else:
-        return replaced_line
+
+    return line
+
 
 
 

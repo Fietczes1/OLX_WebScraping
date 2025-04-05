@@ -8,7 +8,17 @@ from typing import Dict, Any, List
 from EXCELL_file_management.Excell_management import add_rows_to_excell_file_openpyxl_2
 
 import pandas as pd
+import logging
 
+
+# Table existence check
+def check_table_exists(cursor, table_name):
+    cursor.execute(f"""
+        SELECT name 
+        FROM sqlite_master 
+        WHERE type='table' AND name='{table_name}';
+    """)
+    return cursor.fetchone() is not None
 
 #TODO elicit name form Name of Db url
 Table_name = "OLX_scrapping_table"
@@ -27,6 +37,79 @@ def connect_to_database(database_path: str):
 #     #TODO
 #     print("DB_consistance_checker")
 
+
+#PFI Price consistency check
+def check_ad_exists(cursor, ads_id):
+    """
+    Checks whether a given advertisement ID exists in the OLX_scrapping_table.
+
+    Returns:
+        bool: True if exists, False otherwise
+    """
+    cursor.execute("SELECT 1 FROM OLX_scrapping_table WHERE Ads_id = ?", (ads_id,))
+    return cursor.fetchone() is not None
+
+
+def compare_price(cursor, ads_id, new_price):
+    """
+    Compares the new price with the existing price in OLX_scrapping_table.
+
+    Returns:
+        bool: True if prices are different, False if same or record not found
+    """
+    cursor.execute("SELECT Price FROM OLX_scrapping_table WHERE Ads_id = ?", (ads_id,))
+    result = cursor.fetchone()
+    if result is None:
+        return False  # Or raise an error if you'd rather signal that record wasn't found
+    existing_price = result[0]
+    return existing_price != new_price
+
+
+def check_ad_and_compare_price(cursor, ads_id, new_price):
+    """
+    Uses the above two functions to return a tuple:
+    (exists: bool, price_different: bool)
+    """
+    exists = check_ad_exists(cursor, ads_id)
+    if not exists:
+        return (False, False)
+
+    price_different = compare_price(cursor, ads_id, new_price)
+    return (True, price_different)
+
+# def update_ad_price(cursor, ads_id, new_price):
+#     """
+#     Updates the price of a specific advertisement in OLX_scrapping_table.
+#
+#     Args:
+#         cursor: Database cursor
+#         ads_id (str): Advertisement ID
+#         new_price (int): New price to update
+#
+#     Returns:
+#         bool: True if update was successful (record existed), False otherwise
+#     """
+#     cursor.execute("UPDATE OLX_scrapping_table SET Price = ? WHERE Ads_id = ?", (new_price, ads_id))
+#     return cursor.rowcount > 0  # rowcount tells how many rows were affected
+
+def update_ad_price(cursor, ads_id, new_price):
+    """
+    Updates the price and sets Validity = 0 for a specific advertisement in OLX_scrapping_table.
+
+    Args:
+        cursor: Database cursor
+        ads_id (str): Advertisement ID
+        new_price (int): New price to update
+
+    Returns:
+        bool: True if update was successful (record existed), False otherwise
+    """
+    cursor.execute(
+        "UPDATE OLX_scrapping_table SET Price = ?, Validity = 0 WHERE Ads_id = ?",
+        (new_price, ads_id)
+    )
+    return cursor.rowcount > 0
+
 def data_injection(data: dict, connection_object=None):
     result = True  # Initialize result as True
     cursor = connection_object.cursor()
@@ -36,18 +119,30 @@ def data_injection(data: dict, connection_object=None):
 
     try:
 
+        #compare_and_switch_price_and_data(data['Ads_id'], data['Price'], cursor)
+
+
+
+        #Create Table if not exist
         cursor.execute(Table_in_DB_creation_query)
 
         # Prepare the SQL INSERT statement
         query = Query_to_insert_data
+        if check_ad_exists(cursor, data['Ads_id']):
 
-        # Execute the INSERT statement for each data row
-        print("Query to Db: ", query, " data to put in query ", tuple(data.values()))
-        cursor.execute(query, tuple(data.values()))#I ahve to carry values, I cpoudl do it because During Building data everything is adding in proper order according list and Query in Db is maekd according list with order as well
+            if compare_price(cursor, data['Ads_id'], data['Price']):
+                update_ad_price(cursor, data['Ads_id'], data['Price'])
+                logging.info(f"Price for Advertisement with ID: {data['Ads_id']} will be changed to {data['Price']}")
+
+        else:
+            # Execute the INSERT statement for each data row
+            print("Query to Db: ", query, " data to put in query ", tuple(data.values()))
+            #Instering all data to main table
+            cursor.execute(query, tuple(data.values()))#I ahve to carry values, I cpoudl do it because During Building data everything is adding in proper order according list and Query in Db is maekd according list with order as well
 
 
-        # Insert data into the referenced table
-        Add_Date_to_referenced_table(connection_object, data['Ads_id'])
+            # Insert data into the referenced table
+            Add_Date_to_referenced_table(connection_object, data['Ads_id'])
 
         # Commit the changes to the database
         connection_object.commit()
@@ -195,6 +290,8 @@ def Add_Date_to_referenced_table(conn: sqlite3.Connection, Unique_id: str):
     Ads_id TEXT PRIMARY KEY,
     FOREIGN KEY (Ads_id) REFERENCES {Table_name}(Ads_id)
 );"""
+
+    #TODO Add Filtration of price change
 
     query_new_record = """INSERT INTO Date_Observed (AdsDate, Ads_id) VALUES (?, ?)"""
 

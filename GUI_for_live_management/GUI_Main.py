@@ -1,15 +1,28 @@
 import sys
 import timeit
 
+import logging
+import os
+
 from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QTableWidgetItem, QPushButton, QVBoxLayout
 from PyQt5.QtCore import pyqtSignal, QTimer, QObject
+
+#LOGGINNG 2025.01.31
+# LOG_FILE = "process_log.txt"
+# logging.basicConfig(filename=LOG_FILE, level=logging.INFO, format='%(asctime)s - %(message)s')
+
 
 # class SignalHandler(QObject):
 #     update_signal = pyqtSignal(str)
 
 class App(QWidget):
-    def __init__(self, update_queue):
+    def __init__(self, update_queue, stop_event):
         super().__init__()
+        # Get the PID of the GUI process
+        self.pid = os.getpid()
+        self.stop_event = stop_event
+        # Log GUI startup
+        logging.info(f"GUI Process started with PID: {self.pid}")
         self.update_queue = update_queue
         self.initUI()
         self.oldlist = []
@@ -54,6 +67,13 @@ class App(QWidget):
                 self.table_widget.setItem(row, col, QTableWidgetItem(value))
 
     def check_queue(self):
+        # Check if termination is requested
+        if self.stop_event.is_set():
+            print("Termination signal received, closing GUI...")
+            logging.info(f"GUI Process {self.pid} is shutting down.")
+            QApplication.quit()
+            return
+
         #print(self.update_queue.get_nowait())
         if self.update_queue:
             Queue_at_function_start = self.update_queue.empty()
@@ -77,8 +97,8 @@ class App(QWidget):
             # Re-check the queue after a short delay
             QTimer.singleShot(20, self.check_queue)
 
-def main(update_queue):
+def main(update_queue, stop_event):
     app = QApplication(sys.argv)
-    ex = App(update_queue)
+    ex = App(update_queue, stop_event)
     ex.show()
     sys.exit(app.exec_())

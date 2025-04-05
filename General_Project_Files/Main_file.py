@@ -1,10 +1,42 @@
+import pprint
+
 import time
 #GUI implementation
 import multiprocessing
 import atexit
 
+
 import sys
 import os
+
+#29.01.2025
+import logging
+# Setup logging
+
+
+LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "process_log.txt")
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s',handlers=[logging.FileHandler(LOG_FILE),
+        logging.StreamHandler()], force = True)
+
+loggerhandler = logging.getLogger()
+
+# Function to log ALL uncaught exceptions
+def log_unhandled_exceptions(exc_type, exc_value, exc_traceback):
+    logging.error("Unhandled Exception", exc_info=(exc_type, exc_value, exc_traceback))
+
+
+sys.excepthook = log_unhandled_exceptions
+
+print(loggerhandler.handlers)
+
+
+
+import site_grabber_and_AI_API # as it use logger implemented above
+
+if site_grabber_and_AI_API.site_content_grabber.logger == loggerhandler:
+    logging.info(f"logger number in both is the same {id(site_grabber_and_AI_API.site_content_grabber.logger)}")
+else:
+    logging.info(f"Main File logger {id(loggerhandler)}, AI logger is {id(site_grabber_and_AI_API.site_content_grabber.logger)}")
 
 # Get the current script directory
 script_directory = os.path.dirname(os.path.abspath(__file__))
@@ -24,9 +56,11 @@ from GUI_for_live_management.ObservableListClass import ObservableList
 import argparse
 from EXCELL_file_management.Excell_management import add_rows_to_excell_file_openpyxl_2
 
+
+
 #GUI implementation
-def start_gui(update_queue):
-    gui_main(update_queue)
+def start_gui(update_queue, stop_event):
+    gui_main(update_queue, stop_event)
 
 def list_changed(data):
     """ Places each dictionary from the data list into the queue.
@@ -118,6 +152,14 @@ def Argument_Parser():
 #     "--Limitation_Dict", "Price_MAX", "1000000", "Area_MAX", "60", "Area_MIN", "35", "Price_per_meter2_MAX", "20000", "Price_per_meter2_MIN", "11000"
 # ]
 
+# sys.argv = [
+#     "C:/Users/PF_Server/PycharmProjects/OLX_WebScraping/General_Project_Files/Main_file.py",
+#     "--URL", "https://www.olx.pl/nieruchomosci/mieszkania/wegrzce_128037/?search%5Bfilter_float_price:from%5D=300000&search%5Bfilter_float_price:to%5D=600000",
+#     "--DB_url",  "C://Users//PF_Server//PycharmProjects//OLX_WebScraping//Wegrzyce.db",
+#     "--Element_to_extract", "Price", "Area", "Price_per_meter2",
+#     "--Limitation_Dict", "Price_MAX", "600000", "Area_MAX", "60", "Area_MIN", "35", "Price_per_meter2_MAX", "15000", "Price_per_meter2_MIN", "11000"
+# ]
+
 print(sys.argv)
 
 
@@ -130,7 +172,20 @@ def close_db_connection():
         print("Database connection closed.")
 
 
+def filter_adequate_elements(url_s_list: list):
+    result_list =list()
+    model = site_grabber_and_AI_API.project_configuration()
+    if url_s_list:
+        for link in url_s_list:
 
+            description_from_site = site_grabber_and_AI_API.content_getter(link)
+            response = site_grabber_and_AI_API.query_sending(model, description_from_site, site_grabber_and_AI_API.prompt)
+            if hasattr(response, 'text') and isinstance(response.text, str):
+                result_list.append(response.text.strip())
+            else:
+                raise ValueError(f"Invalid response format from API for link: {link}")
+
+    return result_list
 
 if __name__ == "__main__":
 
@@ -157,9 +212,13 @@ if __name__ == "__main__":
 
     #GUI implementation
     update_queue = multiprocessing.Queue()
+    stop_event = multiprocessing.Event()  # Event to signal termination
     # Start the GUI process if needed
-    gui_process = multiprocessing.Process(target=start_gui, args=(update_queue,))
+    gui_process = multiprocessing.Process(target=start_gui, args=(update_queue, stop_event))
     gui_process.start()
+
+    logging.info(f"Main Process started with PID : {os.getpid()}")
+    logging.info(f"GUI Process started with PID noted from Main: {gui_process.pid}")
 
     #Data_To_store
     data = ObservableList()
@@ -185,36 +244,68 @@ if __name__ == "__main__":
             data_injection(elements, connection_data)
 
 
+
         #TODO change for automatic filter addition
-        list_new_items, filtered_items_collumns = filter_new(connection_data, **my_dict) #new  items according restriction
-        print(list_new_items)
-        #input("Code is paused after filtering")
-        connection_data.close()  # Close the database connection
+        try:
+            list_new_items, filtered_items_collumns = filter_new(connection_data, **my_dict) #new  items according restriction
+            print(list_new_items)
+            #input("Code is paused after filtering")
+        except connection_data.OperationalError as e:
+            print(f"An error occurred: {e}")
+            list_new_items = None
+        finally:
+            connection_data.close()  # Close the database connection
 
-        if len(list_new_items) < 6:
+        #AI: Main transition
+        if list_new_items:
+            list_for_AI = [item[filtered_items_collumns.index("URL")] for item in list_new_items] #it takes only URL adressess to gather  data.
 
-            for index, item in enumerate(list_new_items):
-                print(str(index + 1) + ". " + SMS_content_adjuster(dict(zip(filtered_items_collumns, item))))
-                send_sms('+48721776456', str(index + 1) + ". " + SMS_content_adjuster(dict(zip(filtered_items_collumns, item))))
-                time.sleep(5)
-                send_sms('+48509520947', str(index + 1) + ". " + SMS_content_adjuster(dict(zip(filtered_items_collumns, item))))
+            try:
+                adequacy_list = filter_adequate_elements(list_for_AI)
 
-        else:
-            message_text = str()
-            for index, item in enumerate(list_new_items):
-                items_in_dict = dict(zip(filtered_items_collumns, item))
-                message_text = add_line_to_string(str(index + 1), items_in_dict['URL'],  message_text)
-                if (index + 1) % 10 == 0 or index == len(list_new_items) - 1:
-                    print("text to send is: " + message_text)
-                    send_sms('+48721776456', message_text)
+                AI_filtered_list = [item_dict for index, item_dict in enumerate(list_new_items) if adequacy_list[index].upper() == "TAK"]
+                pprint.pp(list_new_items)
+                pprint.pp(adequacy_list)
+                pprint.pp(zip(list_new_items, adequacy_list))
+                pprint.pp(AI_filtered_list)
+                list_new_items = AI_filtered_list
+            except ValueError as e:
+                print(f"An error occurred: {e}")
+                send_sms('+48721776456', "AI request was resulting with FAIL")
+
+
+        #input("Press enter when analyzed...")
+
+        if list_new_items != None:
+
+            if len(list_new_items) < 6 :
+
+                for index, item in enumerate(list_new_items):
+                    print(str(index + 1) + ". " + SMS_content_adjuster(dict(zip(filtered_items_collumns, item))))
+                    send_sms('+48721776456', str(index + 1) + ". " + SMS_content_adjuster(dict(zip(filtered_items_collumns, item))))
                     time.sleep(5)
-                    send_sms('+48509520947', message_text)
-                    message_text = ""
-        # # Print the table
-        # print(table)
-        add_rows_to_excell_file_openpyxl_2(
-            r"C:\Users\PF_Server\PycharmProjects\OLX_WebScraping\General_Project_Files\Filtered_Flats.xlsx", list_new_items,
-            filtered_items_collumns)
+                    send_sms('+48509520947', str(index + 1) + ". " + SMS_content_adjuster(dict(zip(filtered_items_collumns, item))))
 
-    gui_process.terminate()
+            else:
+                message_text = str()
+                for index, item in enumerate(list_new_items):
+                    items_in_dict = dict(zip(filtered_items_collumns, item))
+                    message_text = add_line_to_string(str(index + 1), items_in_dict['URL'],  message_text)
+                    if (index + 1) % 10 == 0 or index == len(list_new_items) - 1:
+                        print("text to send is: " + message_text)
+                        send_sms('+48721776456', message_text)
+                        time.sleep(5)
+                        send_sms('+48509520947', message_text)
+                        message_text = ""
+            # # Print the table
+            # print(table)
+            add_rows_to_excell_file_openpyxl_2(
+                r"C:\Users\PF_Server\PycharmProjects\OLX_WebScraping\General_Project_Files\Filtered_Flats.xlsx", list_new_items,
+                filtered_items_collumns)
+
+    stop_event.set()  # Signal GUI to stop
+    #gui_process.terminate() #that could shout down GUI without closing connected GUI in example pipe or queue #It's to brutal and could leave some junks like python porcess opened
+    gui_process.join(timeout=2)  # Give it time to close gracefully
+    update_queue.close()  # Close the queue to prevent further use
+    update_queue.join_thread()  # Ensure the background thread handling the queue is terminated
     exit()

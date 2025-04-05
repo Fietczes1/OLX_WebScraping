@@ -34,6 +34,9 @@ def add_rows_to_excell_file_openpyxl_2(Filename: str, rows, columns):
                     with pd.ExcelWriter(Filename, engine='openpyxl', mode='a') as writer:
                         df.to_excel(writer, sheet_name=today_date, index=False)
 
+                # Load the existing workbook
+                workbook = load_workbook(Filename)
+            
                 sheet = workbook[today_date]
                 # Find the next available row and add spacing
                 start_row = sheet.max_row + 2
