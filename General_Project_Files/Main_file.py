@@ -147,7 +147,7 @@ def Argument_Parser():
 # sys.argv = [
 #     "C:/Users/PF_Server/PycharmProjects/OLX_WebScraping/General_Project_Files/Main_file.py",
 #     "--URL", "https://www.olx.pl/nieruchomosci/mieszkania/krakow/q-Mieszkanie/?search%5Bfilter_float_price%3Afrom%5D=300000",
-#     "--DB_url",  "C://Users//PF_Server//PycharmProjects//OLX_WebScraping//your_database.db",
+#     "--DB_url",  "C://Users//PF_Server//PycharmProjects//OLX_WebScraping//your_database_test.db",
 #     "--Element_to_extract", "Price", "Area", "Price_per_meter2",
 #     "--Limitation_Dict", "Price_MAX", "1000000", "Area_MAX", "60", "Area_MIN", "35", "Price_per_meter2_MAX", "20000", "Price_per_meter2_MIN", "11000"
 # ]
@@ -182,8 +182,9 @@ def filter_adequate_elements(url_s_list: list):
             response = site_grabber_and_AI_API.query_sending(model, description_from_site, site_grabber_and_AI_API.prompt)
             if hasattr(response, 'text') and isinstance(response.text, str):
                 result_list.append(response.text.strip())
+                logging.info(f"For URL: {link} AI response was {response.text.strip()}")
             else:
-                raise ValueError(f"Invalid response format from API for link: {link}")
+                raise ValueError(f"Invalid response format from  AI API for link: {link}")
 
     return result_list
 
@@ -282,6 +283,7 @@ if __name__ == "__main__":
 
                 for index, item in enumerate(list_new_items):
                     print(str(index + 1) + ". " + SMS_content_adjuster(dict(zip(filtered_items_collumns, item))))
+
                     send_sms('+48721776456', str(index + 1) + ". " + SMS_content_adjuster(dict(zip(filtered_items_collumns, item))))
                     time.sleep(5)
                     send_sms('+48509520947', str(index + 1) + ". " + SMS_content_adjuster(dict(zip(filtered_items_collumns, item))))

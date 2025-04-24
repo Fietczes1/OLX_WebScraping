@@ -57,12 +57,19 @@ def compare_price(cursor, ads_id, new_price):
     Returns:
         bool: True if prices are different, False if same or record not found
     """
+
+    try:
+        new_price = int(new_price)
+    except (ValueError, TypeError):
+        raise ValueError("Passed to compare_price Price value must be convertible to INT")
+
     cursor.execute("SELECT Price FROM OLX_scrapping_table WHERE Ads_id = ?", (ads_id,))
     result = cursor.fetchone()
     if result is None:
-        return False  # Or raise an error if you'd rather signal that record wasn't found
+        return False  # or raise an exception if that's more appropriate
+
     existing_price = result[0]
-    return existing_price != new_price
+    return [int(existing_price) != new_price, int(existing_price) - new_price]
 
 
 def check_ad_and_compare_price(cursor, ads_id, new_price):
@@ -128,11 +135,14 @@ def data_injection(data: dict, connection_object=None):
 
         # Prepare the SQL INSERT statement
         query = Query_to_insert_data
+
+        #If Exist such and price is lover then we going to update value and mark this fact in Validity filed
         if check_ad_exists(cursor, data['Ads_id']):
 
-            if compare_price(cursor, data['Ads_id'], data['Price']):
+            result, price_difference = compare_price(cursor, data['Ads_id'], data['Price'])
+            if result:
                 update_ad_price(cursor, data['Ads_id'], data['Price'])
-                logging.info(f"Price for Advertisement with ID: {data['Ads_id']} will be changed to {data['Price']}")
+                logging.info(f"Price for Advertisement with ID: {data['Ads_id']} will be changed to {data['Price']} discounted about {price_difference} and Validity = 0")
 
         else:
             # Execute the INSERT statement for each data row
@@ -141,8 +151,8 @@ def data_injection(data: dict, connection_object=None):
             cursor.execute(query, tuple(data.values()))#I ahve to carry values, I cpoudl do it because During Building data everything is adding in proper order according list and Query in Db is maekd according list with order as well
 
 
-            # Insert data into the referenced table
-            Add_Date_to_referenced_table(connection_object, data['Ads_id'])
+        # Insert data into the referenced table
+        Add_Date_to_referenced_table(connection_object, data['Ads_id'])
 
         # Commit the changes to the database
         connection_object.commit()
@@ -317,17 +327,22 @@ def filter_new(connection: sqlite3.Connection, Price_MAX=None, Price_MIN=None, A
 
     cursor = connection.cursor()
     #In general to be independednt we coudl filter db about record from today date:
-    Single_item_filtering_query = """SELECT OLX.*
+    # Start building the query
+    Single_item_filtering_query = f"""
+    SELECT OLX.*
     FROM OLX_scrapping_table AS OLX
-    INNER JOIN (
-        SELECT Ads_id, AdsDate
-        FROM Date_Observed
-        GROUP BY Ads_id
-        HAVING COUNT(*) = 1
-    ) AS DO ON OLX.Ads_id = DO.Ads_id
+    LEFT JOIN Date_Observed AS DO ON OLX.Ads_id = DO.Ads_id
+    WHERE (
+        OLX.Ads_id IN (
+            SELECT Ads_id
+            FROM Date_Observed
+            GROUP BY Ads_id
+            HAVING COUNT(*) = 1
+        )
+        OR OLX.Validity = 0
+    )
+    AND DO.AdsDate = "{datetime.today().date().strftime('%Y-%m-%d')}"
     """
-
-    Single_item_filtering_query += f""" WHERE AdsDate = \"{datetime.today().date().strftime('%Y-%m-%d')}\""""
 
     # if isinstance(Price_per_meter2_MAX, int) and Price_per_meter2_MAX > 0:
     #     Single_item_filtering_query += f""" AND Price_per_meter2 < {Price_per_meter2_MAX}"""
@@ -364,6 +379,14 @@ def filter_new(connection: sqlite3.Connection, Price_MAX=None, Price_MIN=None, A
     columns = [column[0] for column in cursor.description]
 
     add_rows_to_excell_file_openpyxl_2(r"C:\Users\PF_Server\PycharmProjects\OLX_WebScraping\General_Project_Files\Filtered_Flats.xlsx", rows, columns)
+
+
+    #Reseting the validity for all tabel at the and of filtration
+    cursor.execute("UPDATE OLX_scrapping_table SET Validity = 1 WHERE Validity = 0")
+
+    if 0 in [row[-1] for row in rows]:
+        logging.info("Ads with price changed in filtered list")
+
 
     return (rows, columns)
 
