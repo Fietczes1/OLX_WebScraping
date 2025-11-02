@@ -99,7 +99,12 @@ def Argument_Parser():
     parser.add_argument("--Element_to_extract", nargs='+', type=str, default=None, help="List of elements to extract")
     # Define a command-line argument for the dictionary
     parser.add_argument("--Limitation_Dict", nargs='+')
+    parser.add_argument("--AI_query", type=str, default=None, help="query to AI")
+
     args = parser.parse_args()
+
+    # if args.AI_query:
+    #     site_grabber_and_AI_API.prompt = """Czy podana treść ogłoszenia spełnia poniższe kryteria? Odpowiedz wyłącznie "TAK", "NIE", lub "None" na podstawie analizy ogłoszenia:""" + args.AI_query
 
     # Convert the list from --my_dict into a dictionary
     Limitation_Dict = {args.Limitation_Dict[i]: int(args.Limitation_Dict[i + 1]) for i in range(0, len(args.Limitation_Dict), 2)}
@@ -151,7 +156,7 @@ def Argument_Parser():
 #     "--Element_to_extract", "Price", "Area", "Price_per_meter2",
 #     "--Limitation_Dict", "Price_MAX", "1000000", "Area_MAX", "60", "Area_MIN", "35", "Price_per_meter2_MAX", "20000", "Price_per_meter2_MIN", "11000"
 # ]
-
+#
 # sys.argv = [
 #     "C:/Users/PF_Server/PycharmProjects/OLX_WebScraping/General_Project_Files/Main_file.py",
 #     "--URL", "https://www.olx.pl/nieruchomosci/mieszkania/wegrzce_128037/?search%5Bfilter_float_price:from%5D=300000&search%5Bfilter_float_price:to%5D=600000",
@@ -179,7 +184,7 @@ def filter_adequate_elements(url_s_list: list):
         for link in url_s_list:
 
             description_from_site = site_grabber_and_AI_API.content_getter(link)
-            response = site_grabber_and_AI_API.query_sending(model, description_from_site, site_grabber_and_AI_API.prompt)
+            response = site_grabber_and_AI_API.query_sending_2_5(model, description_from_site, site_grabber_and_AI_API.prompt)
             if hasattr(response, 'text') and isinstance(response.text, str):
                 result_list.append(response.text.strip())
                 logging.info(f"For URL: {link} AI response was {response.text.strip()}")
@@ -264,7 +269,7 @@ if __name__ == "__main__":
             try:
                 adequacy_list = filter_adequate_elements(list_for_AI)
 
-                AI_filtered_list = [item_dict for index, item_dict in enumerate(list_new_items) if adequacy_list[index].upper() == "TAK"]
+                AI_filtered_list = [item_dict for index, item_dict in enumerate(list_new_items) if (adequacy_list[index].upper() == "TAK" or adequacy_list[index].upper() == "None") ]
                 pprint.pp(list_new_items)
                 pprint.pp(adequacy_list)
                 pprint.pp(zip(list_new_items, adequacy_list))

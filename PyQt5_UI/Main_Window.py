@@ -22,12 +22,24 @@ class App(QWidget):
         self.url_label = QLabel("URL")
         self.url_input = QLineEdit(self)
 
+        # Checkbox do aktywacji sekcji dynamicznej
+        self.ai_checkbox = QCheckBox("AI Demanded")
+        self.ai_checkbox.stateChanged.connect(self.update_dynamic_area)
+        layout.addWidget(self.ai_checkbox)
+
+        # --- DYNAMICZNY OBSZAR ---
+        self.dynamic_container = QWidget()
+        self.dynamic_layout = QVBoxLayout()
+        self.dynamic_container.setLayout(self.dynamic_layout)
+        layout.addWidget(self.dynamic_container)
+
         regex = QRegExp("^(https?://)?[a-z0-9.-]+\.[a-z]{2,}(/.*)?$")
         self.url_validator = QRegExpValidator(regex)
         self.url_input.setValidator(self.url_validator)
 
         layout.addWidget(self.url_label)
         layout.addWidget(self.url_input)
+
 
         # Database Input
         self.database_label = QLabel("Database")
@@ -47,6 +59,9 @@ class App(QWidget):
         self.attributes = ["Price", "Area", "Price_per_meter2"]
         self.checkboxes = {}
         self.text_fields = {}
+
+        self.main_layout = QVBoxLayout()
+        self.setLayout(self.main_layout)
 
         for attrib in self.attributes:
             checkbox = QCheckBox(attrib, self)
@@ -82,6 +97,20 @@ class App(QWidget):
         # Setting layout
         self.setLayout(layout)
 
+    def update_dynamic_area(self):
+        # Wyczyść dynamiczny layout
+        while self.dynamic_layout.count():
+            child = self.dynamic_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
+        # Dodaj nowe elementy jeśli checkbox jest zaznaczony
+        if self.ai_checkbox.isChecked():
+            self.ai_label = QLabel("AI Query:")
+            self.ai_input = QLineEdit()
+            self.dynamic_layout.addWidget(self.ai_label)
+            self.dynamic_layout.addWidget(self.ai_input)
+
     #Accesing the elements
     def Element_hiding_unhiding(self):
         calling_checkbox =  self.sender()
@@ -106,6 +135,7 @@ class App(QWidget):
         for char, escape_seq in special_characters.items():
             escaped_string = escaped_string.replace(char, escape_seq)
         return escaped_string
+
 
     def generate_cmd(self):
         if self.value_validation()[0] == 0:
@@ -135,6 +165,10 @@ class App(QWidget):
                 print(f"Cannot convert one of value from {items} to an integer.")
 
         return [1, None]
+
+
+    def AI_Query(self, AI_request: str):
+        pass
 
 
 if __name__ == '__main__':

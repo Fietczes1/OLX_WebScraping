@@ -25,7 +25,7 @@ attrs = {
     'Title': "css-1wxaaza",
     'Price': "ad-price",
     'Location': "css-veheph er34gjf0",
-    'Area': "css-6as4g5", # "css-1cd0guq",
+    'Area': "css-h59g4b",#"css-6as4g5", # "css-1cd0guq",
     'URL': "css-rc5s2u"
 }
 
@@ -244,18 +244,20 @@ def extract_data(card: bs4.Tag, attrs: Dict[str, str], elements: List[str]) -> D
     if 'Area' in elements or 'Price_per_meter2' in elements:
         try:
             area_elem = card.find("span", class_=attrs['Area'])
-            if not area_elem:
-                area_elem = re.findall(r"[\d\s\.\,]+(?=m²).{10}[\d\s\.\,]+zł/m²", card.text)[0]
 
+            if not area_elem:
+                area_elem = re.findall(r"[\d\s\.\,]+(?=m²).{10}[\d\s\.\,]+zł\/m²", card.text)[0]
+            else:
+                area_elem = area_elem.text
 
 
             if 'Price_per_meter2' in elements:
-                price_per_sqm_match = re.search(price_per_sqm_pattern, area_elem.text)
+                price_per_sqm_match = re.search(price_per_sqm_pattern, area_elem)
                 data['Price_per_meter2'] = float(price_per_sqm_match.group(1).replace(",", ".")) if price_per_sqm_match else None
 
             if 'Area' in elements:
                 proper_str_float_construction_of_sqm_match = str()
-                sqm_match = re.search(sqm_pattern, area_elem.text)
+                sqm_match = re.search(sqm_pattern, area_elem)
                 if sqm_match is not None:
                     proper_str_float_construction_of_sqm_match = sqm_match.group(1)
                     if ',' in proper_str_float_construction_of_sqm_match:
